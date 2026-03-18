@@ -2,7 +2,7 @@ using Domain.DTOs;
 
 namespace Domain.Filters;
 
-public class JobFilter : PagedRequest
+public class JobFilter 
 {
     public string? Title { get; set; }
     public string? Location { get; set; }

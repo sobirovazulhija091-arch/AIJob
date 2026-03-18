@@ -1,6 +1,6 @@
-public class UserProfileDto
+public class CreateUserProfileDto
 {
-    public int UserId { get; set; }
+      public int UserId { get; set; }
     public string FirstName { get; set; }=null!;
     public string LastName { get; set; }=null!;
     public string AboutMe { get; set; }=null!;
