@@ -153,7 +153,11 @@ public class AuthService : IAuthService
     private string GenerateJwtToken(User user)
     {
         var jwtSection = _configuration.GetSection("Jwt");
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var keyBytes = Encoding.UTF8.GetBytes(jwtSection["Key"] ?? "");
+        if (keyBytes.Length < 32)
+            throw new InvalidOperationException("Jwt:Key must be at least 32 characters for HS256.");
+
+        var key = new SymmetricSecurityKey(keyBytes);
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var expiresMinutes = int.Parse(jwtSection["ExpiresInMinutes"] ?? "60");
