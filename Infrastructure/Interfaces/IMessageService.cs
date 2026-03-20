@@ -2,10 +2,7 @@ using Domain.DTOs;
 
 public interface IMessageService
 {
-    Task<Response<MessageDto>> CreateAsync(CreateMessageDto dto);
-    Task<Response<MessageDto>> GetByIdAsync(int id);
-    Task<Response<List<MessageDto>>> GetAllAsync();
-    Task<Response<bool>> DeleteAsync(int id);
-
-    Task<Response<List<MessageDto>>> GetByConversationIdAsync(int conversationId);
+    Task<Response<string>> CreateAsync(int senderId, CreateMessageDto dto);
+    Task<Response<Message>> GetByIdAsync(int id);
+    Task<Response<List<Message>>> GetByConversationIdAsync(int conversationId, int userId);
 }

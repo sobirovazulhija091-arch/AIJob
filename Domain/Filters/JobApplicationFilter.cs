@@ -1,8 +1,6 @@
-using Domain.DTOs;
-
 namespace Domain.Filters;
 
-public class JobApplicationFilter 
+public class JobApplicationFilter
 {
     public ApplicationStatus? Status { get; set; }
     public int? JobId { get; set; }

@@ -1,0 +1,143 @@
+using System.Net;
+using Domain.DTOs;
+using Domain.Filters;
+using Infrastructure.Data;
+using Infrastructure.Responses;
+using Microsoft.EntityFrameworkCore;
+
+public class JobService(ApplicationDbContext dbContext):IJobService
+{
+    private readonly ApplicationDbContext context = dbContext;
+
+    public async Task<Response<string>> AddAsync(CreateJobDto dto)
+    {
+       var  job = new Job
+       {
+           OrganizationId = dto.OrganizationId,
+           Description = dto.Description,
+           Title = dto.Title,
+           SalaryMin = dto.SalaryMin,
+           SalaryMax = dto.SalaryMax,
+           Location  = dto.Location,
+           JobType = dto.JobType,   
+           ExperienceLevel = dto.ExperienceLevel,
+           ExperienceRequired = dto.ExperienceRequired,
+           CategoryId = dto.CategoryId
+       };
+       await context.Jobs.AddAsync(job);
+       await context.SaveChangesAsync();
+       return new Response<string>(HttpStatusCode.OK,"Add Job  successfully");
+    }
+
+    public async Task<Response<string>> DeleteAsync(int id)
+    {
+        var del = await context.Jobs.FindAsync(id);
+        if (del == null)
+        {
+            return new Response<string>(HttpStatusCode.NotFound,"Job not found");
+        }
+        context.Jobs.Remove(del);
+        await context.SaveChangesAsync();
+        return new Response<string>(HttpStatusCode.OK,"Deleted Job successfully");
+    }
+
+    public async Task<Response<List<Job>>> GetAllAsync()
+    {
+       return new Response<List<Job>>(HttpStatusCode.OK,"ok", await context.Jobs.ToListAsync());
+    }
+
+    public async Task<Response<Job>> GetByIdAsync(int id)
+    {
+        var get = await context.Jobs.FindAsync(id);
+        if (get == null)
+        {
+            return new Response<Job>(HttpStatusCode.NotFound,"Job not found");
+        }
+        return new Response<Job>(HttpStatusCode.OK,"ok",get);
+    }
+
+    public async Task<Response<List<Job>>> GetByOrganizationIdAsync(int organizationId)
+    {
+        var jobs = await context.Jobs.Where(j => j.OrganizationId == organizationId).ToListAsync();
+        return new Response<List<Job>>(HttpStatusCode.OK, "ok", jobs);
+
+    }
+
+    public async Task<PagedResult<Job>> GetPagedAsync(JobFilter filter,PagedQuery querypage)
+    {
+        var query = context.Jobs.AsQueryable();
+        if (filter.OrganizationId!=null)
+        {
+            query = query.Where(j => j.OrganizationId == filter.OrganizationId.Value);
+        }
+        if (filter.CategoryId!=null)
+        {
+            query = query.Where(j => j.CategoryId == filter.CategoryId.Value);
+        }
+        if (filter.Title!=null)
+        {
+            query = query.Where(j => j.Title.Contains(filter.Title));
+        }
+        if (filter.Location!=null)
+        {
+            query = query.Where(j => j.Location.Contains(filter.Location));
+        }
+        if (filter.JobType!=null)
+        {
+            query = query.Where(j => j.JobType == filter.JobType);
+        }
+        if (filter.ExperienceLevel!=null)
+        {
+            query = query.Where(j => j.ExperienceLevel == filter.ExperienceLevel);
+        }
+        if (filter.SalaryMin.HasValue)
+        {
+            query = query.Where(j => j.SalaryMin >= filter.SalaryMin.Value);
+        }
+        if (filter.SalaryMax.HasValue)
+        {
+            query = query.Where(j => j.SalaryMax <= filter.SalaryMax.Value);
+        }
+        var total = await query.CountAsync();
+        var page = querypage.PageNumber > 0 ? querypage.PageNumber : 1;
+        var pageSize = querypage.PageSize > 0 ? querypage.PageSize : 10;    
+        var jobs = query.Skip((page - 1) * pageSize).Take(pageSize);
+        var jobList = await jobs.ToListAsync();
+
+        return new PagedResult<Job>
+        {
+            Items = jobList,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = total,
+            TotalPages = (int)Math.Ceiling((double)total / pageSize)
+        };
+    }
+
+    public async Task<Response<List<Job>>> SearchByTitleAsync(string title)
+    {
+       var job = await context.Jobs.Where(j=>j.Title.Contains(title)).ToListAsync();
+       return new Response<List<Job>>(HttpStatusCode.OK,"ok",job);
+    }
+
+    public async Task<Response<string>> UpdateAsync(int id, UpdateJobDto dto)
+    {
+        var update = await context.Jobs.FindAsync(id);
+        if (update == null)
+        {
+            return new Response<string>(HttpStatusCode.NotFound,"Job not found");
+        }
+        update.Title = dto.Title;
+        update.Description = dto.Description;
+        update.SalaryMin = dto.SalaryMin;
+        update.SalaryMax = dto.SalaryMax;
+        update.Location = dto.Location;
+        update.JobType = dto.JobType;
+        update.ExperienceLevel = dto.ExperienceLevel;
+        update.ExperienceRequired = dto.ExperienceRequired;
+        update.CategoryId = dto.CategoryId;
+        await context.SaveChangesAsync();
+        return new Response<string>(HttpStatusCode.OK,"ok" );
+    }
+
+}

@@ -4,14 +4,13 @@ using Infrastructure.Responses;
 
 public interface IJobApplicationService
 {
-    Task<Response<JobApplicationDto>> CreateAsync(CreateJobApplicationDto dto);
-    Task<Response<JobApplicationDto>> GetByIdAsync(int id);
-    Task<Response<List<JobApplicationDto>>> GetAllAsync();
-    Task<Response<PagedResult<JobApplicationDto>>> GetPagedAsync(JobApplicationFilter filter);
-    Task<Response<JobApplicationDto>> UpdateAsync(int id, UpdateJobApplicationDto dto);
-    Task<Response<bool>> DeleteAsync(int id);
-
-    Task<Response<List<JobApplicationResponseDto>>> GetByUserIdAsync(int userId);
-    Task<Response<List<JobApplicationResponseDto>>> GetByJobIdAsync(int jobId);
-    Task<Response<bool>> ChangeStatusAsync(int id, ApplicationStatus status);
+    Task<Response<string>> CreateAsync(CreateJobApplicationDto dto);
+    Task<Response<JobApplication>> GetByIdAsync(int id);
+    Task<Response<List<JobApplication>>> GetAllAsync();
+    Task<PagedResult<JobApplication>> GetPagedAsync(JobApplicationFilter filter, PagedQuery querypage);
+    Task<Response<string>> UpdateAsync(int id, UpdateJobApplicationDto dto);
+    Task<Response<string>> DeleteAsync(int id);
+    Task<Response<List<JobApplication>>> GetByUserIdAsync(int userId);
+    Task<Response<List<JobApplication>>> GetByJobIdAsync(int jobId);
+    Task<Response<string>> ChangeStatusAsync(int id, ApplicationStatus status);
 }

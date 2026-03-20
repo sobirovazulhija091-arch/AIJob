@@ -52,6 +52,28 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.Configure<EmailSetting>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IJobService, JobService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IUserSkillService, UserSkillService>();
+builder.Services.AddScoped<IUserEducationService, UserEducationService>();
+builder.Services.AddScoped<IEducationService, EducationService>();
+builder.Services.AddScoped<IUserExperienceService, UserExperienceService>();
+builder.Services.AddScoped<IJobCategoryService, JobCategoryService>();
+builder.Services.AddScoped<IJobSkillService, JobSkillService>();
+builder.Services.AddScoped<IJobApplicationService, JobApplicationService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IOrganizationMemberService, OrganizationMemberService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<ISkillService, SkillService>();
+builder.Services.AddScoped<ILanguageService, LanguageService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IProfileSkillService, ProfileSkillService>();
+builder.Services.AddScoped<IProfileLanguageService, ProfileLanguageService>();
+builder.Services.AddScoped<IConnectionService, ConnectionService>();
+builder.Services.AddScoped<IConversationService, ConversationService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddIdentityCore<User>(options =>
     {
@@ -124,6 +146,7 @@ using (var scope = app.Services.CreateScope())
 
     await EnsureUser("admin@example.com", "Admin User", "+0000000000", "Admin123!", "Admin");
     await EnsureUser("candidate@example.com", "Test Candidate", "+1111111111", "Candidate123!", "Candidate");
+    await EnsureUser("organization@example.com", "Test Organization", "+2222222222", "Organization123!", "Organization");
 }
 
 if (app.Environment.IsDevelopment())
@@ -133,6 +156,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();

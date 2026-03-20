@@ -6,3 +6,6 @@ public class PagedRequest
     public int PageSize { get; set; } = 10;
 }
 
+public class PagedQuery : PagedRequest
+{
+}

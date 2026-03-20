@@ -11,23 +11,28 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
     {
     }
 
-    public DbSet<UserProfile> UserProfiles { get; set; } = null!;
-    public DbSet<Profile> Profiles { get; set; } = null!;
-    public DbSet<Education> Educations { get; set; } = null!;
-    public DbSet<UserEducation> UserEducations { get; set; } = null!;
-    public DbSet<UserExperience> UserExperiences { get; set; } = null!;
-    public DbSet<Skill> Skills { get; set; } = null!;
-    public DbSet<UserSkill> UserSkills { get; set; } = null!;
-    public DbSet<ProfileSkill> ProfileSkills { get; set; } = null!;
-    public DbSet<Language> Languages { get; set; } = null!;
-    public DbSet<Organization> Organizations { get; set; } = null!;
-    public DbSet<OrganizationMember> OrganizationMembers { get; set; } = null!;
-    public DbSet<Job> Jobs { get; set; } = null!;
-    public DbSet<JobCategory> JobCategories { get; set; } = null!;
-    public DbSet<JobSkill> JobSkills { get; set; } = null!;
-    public DbSet<JobApplication> JobApplications { get; set; } = null!;
-    public DbSet<Notification> Notifications { get; set; } = null!;
-    public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+    public DbSet<UserProfile> UserProfiles { get; set; } 
+    public DbSet<Profile> Profiles { get; set; }
+    public DbSet<Education> Educations { get; set; } 
+    public DbSet<UserEducation> UserEducations { get; set; } 
+    public DbSet<UserExperience> UserExperiences { get; set; } 
+    public DbSet<Skill> Skills { get; set; } 
+    public DbSet<UserSkill> UserSkills { get; set; } 
+    public DbSet<ProfileSkill> ProfileSkills { get; set; } 
+    public DbSet<ProfileLanguage> ProfileLanguages { get; set; }
+    public DbSet<Language> Languages { get; set; } 
+    public DbSet<Organization> Organizations { get; set; } 
+    public DbSet<OrganizationMember> OrganizationMembers { get; set; } 
+    public DbSet<Job> Jobs { get; set; } 
+    public DbSet<JobCategory> JobCategories { get; set; } 
+    public DbSet<JobSkill> JobSkills { get; set; } 
+    public DbSet<JobApplication> JobApplications { get; set; } 
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Connection> Connections { get; set; }
+    public DbSet<Conversation> Conversations { get; set; }
+    public DbSet<Message> Messages { get; set; }
+    public DbSet<Post> Posts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +87,11 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .WithOne()
             .HasForeignKey<UserProfile>(p => p.UserId);
 
+        modelBuilder.Entity<Profile>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(p => p.UserId);
+
         
         modelBuilder.Entity<UserExperience>()
             .HasOne<User>()
@@ -121,6 +131,17 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .HasOne<Skill>()
             .WithMany()
             .HasForeignKey(ps => ps.SkillId);
+
+        // Profile ↔ ProfileLanguage ↔ Language (many-to-many via ProfileLanguage)
+        modelBuilder.Entity<ProfileLanguage>()
+            .HasOne<Profile>()
+            .WithMany()
+            .HasForeignKey(pl => pl.ProfileId);
+
+        modelBuilder.Entity<ProfileLanguage>()
+            .HasOne<Language>()
+            .WithMany()
+            .HasForeignKey(pl => pl.LanguageId);
 
       
         modelBuilder.Entity<Job>()
@@ -178,6 +199,41 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .HasOne<User>()
             .WithMany()
             .HasForeignKey(rt => rt.UserId);
+
+        modelBuilder.Entity<Connection>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.RequesterId);
+
+        modelBuilder.Entity<Connection>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.AddresseeId);
+
+        modelBuilder.Entity<Conversation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.User1Id);
+
+        modelBuilder.Entity<Conversation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.User2Id);
+
+        modelBuilder.Entity<Message>()
+            .HasOne<Conversation>()
+            .WithMany()
+            .HasForeignKey(m => m.ConversationId);
+
+        modelBuilder.Entity<Message>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(m => m.SenderId);
+
+        modelBuilder.Entity<Post>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(p => p.UserId);
 
     }
 }

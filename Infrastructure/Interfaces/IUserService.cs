@@ -4,13 +4,12 @@ using Infrastructure.Responses;
 
 public interface IUserService
 {
-    Task<Response<UserResponseDto>> CreateAsync(CreateUserDto dto);
-    Task<Response<UserResponseDto>> GetByIdAsync(int id);
-    Task<Response<IEnumerable<UserResponseDto>>> GetAllAsync();
-    Task<Response<PagedResult<UserResponseDto>>> GetPagedAsync(UserFilter filter);
-    Task<Response<UserResponseDto>> UpdateAsync(int id, UpdateUserDto dto);
-    Task<Response<UserResponseDto>> DeleteAsync(int id);
-
-    Task<Response<UserResponseDto>> GetByEmailAsync(string email);
-    Task<Response<bool>> ChangeRoleAsync(int id, UserRole role);
+    Task<Response<string>> CreateAsync(CreateUserDto dto);
+    Task<Response<User>> GetByIdAsync(int id);
+    Task<Response<List<User>>> GetAllAsync();
+    Task<PagedResult<User>> GetPagedAsync(UserFilter filter, PagedQuery querypage);
+    Task<Response<string>> UpdateAsync(int id, UpdateUserDto dto);
+    Task<Response<string>> DeleteAsync(int id);
+    Task<Response<User>> GetByEmailAsync(string email);
+    Task<Response<string>> ChangeRoleAsync(int id, UserRole role);
 }

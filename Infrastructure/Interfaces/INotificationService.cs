@@ -3,12 +3,11 @@ using Infrastructure.Responses;
 
 public interface INotificationService
 {
-    Task<Response<NotificationDto>> CreateAsync(CreateNotificationDto dto);
-    Task<Response<NotificationDto>> GetByIdAsync(int id);
-    Task<Response<IEnumerable<NotificationDto>>> GetAllAsync();
-    Task<Response<PagedResult<NotificationDto>>> GetPagedAsync(int userId, PagedRequest request);
-    Task<Response<bool>> DeleteAsync(int id);
-
-    Task<Response<IEnumerable<NotificationDto>>> GetByUserIdAsync(int userId);
-    Task<Response<bool>> MarkAsReadAsync(int id);
+    Task<Response<string>> CreateAsync(CreateNotificationDto dto);
+    Task<Response<Notification>> GetByIdAsync(int id);
+    Task<Response<List<Notification>>> GetAllAsync();
+    Task<PagedResult<Notification>> GetPagedAsync(int userId, PagedQuery querypage);
+    Task<Response<string>> DeleteAsync(int id);
+    Task<Response<List<Notification>>> GetByUserIdAsync(int userId);
+    Task<Response<string>> MarkAsReadAsync(int id);
 }
