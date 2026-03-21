@@ -40,8 +40,8 @@ public class ConnectionService(ApplicationDbContext dbContext) : IConnectionServ
         var conn = await context.Connections.FindAsync(connectionId);
         if (conn == null)
             return new Response<string>(HttpStatusCode.NotFound, "Connection not found");
-        if (conn.AddresseeId != userId)
-            return new Response<string>(HttpStatusCode.Forbidden, "Only the addressee can respond");
+        if (conn.RequesterId != userId && conn.AddresseeId != userId)
+            return new Response<string>(HttpStatusCode.Forbidden, "You must be part of this connection to respond");
         if (conn.Status != ConnectionStatus.Pending)
             return new Response<string>(HttpStatusCode.BadRequest, "Request already responded");
 
@@ -70,6 +70,15 @@ public class ConnectionService(ApplicationDbContext dbContext) : IConnectionServ
     {
         var list = await context.Connections
             .Where(c => c.AddresseeId == userId && c.Status == ConnectionStatus.Pending)
+            .ToListAsync();
+        return new Response<List<Connection>>(HttpStatusCode.OK, "ok", list);
+    }
+
+    public async Task<Response<List<Connection>>> GetAllForUserAsync(int userId)
+    {
+        var list = await context.Connections
+            .Where(c => c.RequesterId == userId || c.AddresseeId == userId)
+            .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
         return new Response<List<Connection>>(HttpStatusCode.OK, "ok", list);
     }

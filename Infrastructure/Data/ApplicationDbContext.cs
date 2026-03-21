@@ -1,3 +1,4 @@
+using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
     public DbSet<Conversation> Conversations { get; set; }
     public DbSet<Message> Messages { get; set; }
     public DbSet<Post> Posts { get; set; }
+    public DbSet<Endorsement> Endorsements { get; set; }
+    public DbSet<Recommendation> Recommendations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,5 +238,32 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .WithMany()
             .HasForeignKey(p => p.UserId);
 
+        modelBuilder.Entity<Endorsement>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(e => e.EndorserId);
+
+        modelBuilder.Entity<Endorsement>()
+            .HasOne<ProfileSkill>()
+            .WithMany()
+            .HasForeignKey(e => e.ProfileSkillId);
+
+        modelBuilder.Entity<Endorsement>()
+            .HasIndex(e => new { e.EndorserId, e.ProfileSkillId })
+            .IsUnique();
+
+        modelBuilder.Entity<Recommendation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(r => r.AuthorId);
+
+        modelBuilder.Entity<Recommendation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(r => r.RecipientId);
+
+        modelBuilder.Entity<Recommendation>()
+            .Property(r => r.Content)
+            .HasMaxLength(2000);
     }
 }

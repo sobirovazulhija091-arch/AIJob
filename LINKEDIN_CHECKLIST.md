@@ -65,7 +65,7 @@ All entities in DbContext now have service + controller:
 | **Connections / Network** | ✅ | Connection entity, send/respond/list/remove |
 | **Messaging (Chat)** | ✅ | Conversation, Message, MessageService, ConversationService |
 | **Posts / Feed** | ✅ | Post entity, feed from connections + self |
-| **Recommendations / Endorsements** | ❌ | No endorsement counts, recommendations |
+| **Recommendations / Endorsements** | ✅ | Endorsement (skill), Recommendation (written) – POST/GET/DELETE |
 | **File upload (CV, photo)** | ✅ | POST /api/upload/cv, POST /api/upload/photo |
 | **Organization user seed** | ✅ | Seed has Admin, Candidate, Organization user |
 | **CORS** | ⚠️ | May be needed if you add a frontend |

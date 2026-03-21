@@ -3,6 +3,7 @@ using Domain.Filters;
 using Infrastructure.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -13,6 +14,15 @@ public class UserController : ControllerBase
     public UserController(IUserService userService)
     {
         _userService = userService;
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public IActionResult GetMe()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        return Ok(new { userId, email });
     }
 
     [HttpPost]

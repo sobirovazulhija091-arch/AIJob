@@ -395,38 +395,96 @@ Body: 2
 
 ---
 
-# PART 6: CONNECTIONS (Network)
+# PART 6: CONNECTIONS (Network) – Step by Step
 
-*Candidate/User connects with another user.*
+*Candidate sends request → Organization accepts. Do these steps in order.*
 
-## Step 6.1: Send connection request
+---
+
+## Step 6.0: Find your user IDs (do this first!)
+
+**6.0a.** Login as **Candidate**:
+```
+POST /api/Auth/login
+Body: { "email": "candidate@example.com", "password": "Candidate123!" }
+```
+Copy the `token` from the response. In Swagger: **Authorize** → paste `Bearer {token}`.
+
+**6.0b.** Get Candidate's userId:
+```
+GET /api/User/me
+Authorization: Bearer {candidate-token}
+```
+→ Returns `{ "userId": "2", "email": "candidate@example.com" }` (usually 2). **Write down this userId.**
+
+**6.0c.** Logout (or use another browser/tab). Login as **Organization**:
+```
+POST /api/Auth/login
+Body: { "email": "organization@example.com", "password": "Organization123!" }
+```
+Copy the Organization token. **Authorize** with it.
+
+**6.0d.** Get Organization's userId:
+```
+GET /api/User/me
+Authorization: Bearer {organization-token}
+```
+→ Returns `{ "userId": "3", "email": "organization@example.com" }` (usually 3). **Write down this userId.**
+
+*If you get different IDs (e.g. 4, 5), use those in the steps below.*
+
+---
+
+## Step 6.1: Candidate sends connection request
+
+**Switch to Candidate token** (login again if needed, Authorize in Swagger).
 
 ```
 POST /api/Connection/send/{addresseeId}
-Authorization: Bearer {token}
+Authorization: Bearer {candidate-token}
 ```
-*addresseeId = user you want to connect with (e.g. 3 for organization user)*
+- **addresseeId** = Organization's userId from Step 6.0d (e.g. `3`)
 
-## Step 6.2: Get pending requests (as addressee)
+Example: `POST /api/Connection/send/3`
+
+→ Should return 200 OK. Save the connection `id` from the response if shown.
+
+---
+
+## Step 6.2: Organization sees pending requests
+
+**Switch to Organization token** (login as Organization, Authorize).
 
 ```
 GET /api/Connection/pending
-Authorization: Bearer {token}
+Authorization: Bearer {organization-token}
 ```
+→ Returns list of pending requests. Note the `id` of the connection (e.g. 1, 2, 3).
 
-## Step 6.3: Accept or decline request
+---
+
+## Step 6.3: Organization accepts the request
 
 ```
 PUT /api/Connection/{connectionId}/respond
-Authorization: Bearer {token}
+Authorization: Bearer {organization-token}
+Content-Type: application/json
 ```
 
+**Body:**
 ```json
 {
   "status": 1
 }
 ```
-*status: 0=Pending, 1=Accepted, 2=Declined*
+- **connectionId** = the `id` from Step 6.2 (e.g. `2`)
+- **status**: `0`=Pending, `1`=Accepted, `2`=Declined
+
+Example: `PUT /api/Connection/2/respond` with body `{"status": 1}`
+
+→ Should return 200 OK if you're the addressee.
+
+---
 
 ## Step 6.4: Get my connections
 
@@ -434,13 +492,37 @@ Authorization: Bearer {token}
 GET /api/Connection/my
 Authorization: Bearer {token}
 ```
+→ Returns only **Accepted** connections.
 
-## Step 6.5: Remove connection
+---
+
+## Step 6.5: Get all connections (sent + received, any status)
+
+Use this to find the connection ID if `/pending` is empty:
+
+```
+GET /api/Connection/all
+Authorization: Bearer {token}
+```
+
+---
+
+## Step 6.6: Remove connection
 
 ```
 DELETE /api/Connection/{connectionId}
 Authorization: Bearer {token}
 ```
+
+---
+
+## Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| 403 Forbidden on respond | Your token's userId is not requester or addressee | Call `GET /api/User/me` – use the correct user's token |
+| 404 Not Found on respond | Connection ID doesn't exist or you're not in it | Call `GET /api/Connection/all` – use an ID from that list |
+| Empty list on pending/all | No connections for this user | Candidate must send request to Organization's **exact** userId (Step 6.0d) |
 
 ---
 
@@ -580,7 +662,7 @@ Authorization: Bearer {token}
 ```
 
 ---
-
+//not need it for photo 
 # PART 10: FILE UPLOAD
 
 ## Step 10.1: Upload CV
@@ -602,6 +684,68 @@ Content-Type: multipart/form-data
 Body: file = (JPG, PNG, GIF, WEBP, max 5 MB)
 ```
 *Returns URL like `/uploads/photos/xxx.jpg`. Use in Profile.photoUrl or Post.imageUrl.*
+
+---
+
+# PART 11: ENDORSEMENTS & RECOMMENDATIONS
+
+*Both require an accepted connection with the other user.*
+
+## Endorsements (skill +1)
+
+Endorse a connection's skill on their Profile. Requires: Profile with ProfileSkill.
+
+```
+POST /api/Endorsement
+Authorization: Bearer {token}
+```
+
+```json
+{
+  "profileSkillId": 1
+}
+```
+
+Get endorsements for a profile skill:
+```
+GET /api/Endorsement/by-profile-skill/{profileSkillId}
+```
+
+Get endorsements you gave:
+```
+GET /api/Endorsement/by-user/{userId}
+```
+
+Remove your endorsement:
+```
+DELETE /api/Endorsement/{id}
+```
+
+## Recommendations (written testimonial)
+
+Write a recommendation for a connection.
+
+```
+POST /api/Recommendation
+Authorization: Bearer {token}
+```
+
+```json
+{
+  "recipientId": 6,
+  "content": "Great colleague! Highly recommend."
+}
+```
+
+Get recommendations for a user:
+```
+GET /api/Recommendation/by-recipient/{recipientId}
+```
+
+Delete (author or recipient can delete):
+```
+DELETE /api/Recommendation/{id}
+```
 
 ---
 

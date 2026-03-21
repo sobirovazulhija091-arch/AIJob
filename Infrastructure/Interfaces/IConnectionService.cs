@@ -7,5 +7,6 @@ public interface IConnectionService
     Task<Response<Connection>> GetByIdAsync(int id);
     Task<Response<List<Connection>>> GetByUserIdAsync(int userId);
     Task<Response<List<Connection>>> GetPendingRequestsAsync(int userId);
+    Task<Response<List<Connection>>> GetAllForUserAsync(int userId);
     Task<Response<string>> RemoveConnectionAsync(int connectionId, int userId);
 }

@@ -38,13 +38,17 @@ public class PostService(ApplicationDbContext dbContext) : IPostService
 
     public async Task<Response<List<Post>>> GetFeedAsync(int userId)
     {
-        var connectionIds = await context.Connections
+        var connections = await context.Connections
             .Where(c => (c.RequesterId == userId || c.AddresseeId == userId) && c.Status == ConnectionStatus.Accepted)
+            .Select(c => new { c.RequesterId, c.AddresseeId })
+            .ToListAsync();
+
+        var connectionIds = connections
             .SelectMany(c => new[] { c.RequesterId, c.AddresseeId })
             .Where(id => id != userId)
             .Distinct()
-            .ToListAsync();
-        connectionIds.Add(userId);
+            .Append(userId)
+            .ToList();
 
         var list = await context.Posts
             .Where(p => connectionIds.Contains(p.UserId))
