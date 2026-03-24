@@ -58,6 +58,21 @@ All entities in DbContext now have service + controller:
 
 ---
 
+## 🤖 AI PART – NOT DONE
+
+| Item | Status | Notes |
+|------|--------|-------|
+| **Sort jobs for candidates** | ❌ | Order jobs by match to user profile (skills, experience) |
+| **Matching score for candidates** | ❌ | Compute job–candidate fit score |
+| **Sort applicants for companies** | ❌ | Order applicants by fit to job requirements |
+| **APIs for sorted lists** | ❌ | Endpoints that return jobs/applicants sorted by match |
+| **Use AI for matching** | ❌ | Integrate Gemini into Job/Application endpoints (quota permitting) |
+| **Cache match scores** | ❌ | Optional – avoid recomputing every time |
+
+*Current AI: `POST /api/Ai/ask` exists (generic prompt). Not yet wired into job or applicant lists.*
+
+---
+
 ## ❌ NOT IMPLEMENTED (LinkedIn has these)
 
 | Feature | Status | Notes |
