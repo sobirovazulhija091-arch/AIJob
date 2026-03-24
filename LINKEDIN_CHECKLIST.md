@@ -58,22 +58,22 @@ All entities in DbContext now have service + controller:
 
 ---
 
-## 🤖 AI PART – NOT DONE
+## 🤖 AI PART – DONE
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **Sort jobs for candidates** | ❌ | Order jobs by match to user profile (skills, experience) |
-| **Matching score for candidates** | ❌ | Compute job–candidate fit score |
-| **Sort applicants for companies** | ❌ | Order applicants by fit to job requirements |
-| **APIs for sorted lists** | ❌ | Endpoints that return jobs/applicants sorted by match |
-| **Use AI for matching** | ❌ | Integrate Gemini into Job/Application endpoints (quota permitting) |
-| **Cache match scores** | ❌ | Optional – avoid recomputing every time |
+| **Sort jobs for candidates** | ✅ | `GET /api/JobMatching/recommended-jobs/{userId}` – jobs sorted by match |
+| **Matching score for candidates** | ✅ | 0–100 score from skills + experience |
+| **Sort applicants for companies** | ✅ | `GET /api/JobMatching/recommended-applicants/{jobId}` – applicants sorted by match |
+| **APIs for sorted lists** | ✅ | JobMatchingController with paged results |
+| **Use AI for matching** | ✅ | `GET /api/JobMatching/match-explanation/{userId}/{jobId}?useAi=true` – Gemini-generated insight |
+| **Cache match scores** | ⏸️ | Optional – can be added later with IMemoryCache |
 
-*Current AI: `POST /api/Ai/ask` exists (generic prompt). Not yet wired into job or applicant lists.*
+*Rule-based matching (skills + experience) works without AI. Set `useAi=true` for Gemini-generated match explanations.*
 
 ---
 
-## ❌ NOT IMPLEMENTED (LinkedIn has these)
+## IMPLEMENTED (LinkedIn has these)
 
 | Feature | Status | Notes |
 |---------|--------|-------|

@@ -77,6 +77,7 @@ builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IEndorsementService, EndorsementService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IGoogleAiService, GoogleAiService>();
+builder.Services.AddScoped<IJobMatchingService, JobMatchingService>();
 
 builder.Services.AddIdentityCore<User>(options =>
     {
