@@ -2,7 +2,7 @@ namespace Domain.DTOs;
 
 public class UserSettingsDto
 {
-    public string Theme { get; set; } = "system";
+    public string Theme { get; set; } = "light";
     public string BrandColor { get; set; } = "blue";
     public bool EmailNotifications { get; set; } = true;
     public bool PushNotifications { get; set; } = true;
@@ -11,7 +11,7 @@ public class UserSettingsDto
 
 public class UpdateUserSettingsDto
 {
-    public string Theme { get; set; } = "system";
+    public string Theme { get; set; } = "light";
     public string BrandColor { get; set; } = "blue";
     public bool EmailNotifications { get; set; } = true;
     public bool PushNotifications { get; set; } = true;

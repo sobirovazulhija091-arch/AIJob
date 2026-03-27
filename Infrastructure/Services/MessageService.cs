@@ -10,6 +10,11 @@ public class MessageService(ApplicationDbContext dbContext) : IMessageService
 
     public async Task<Response<string>> CreateAsync(int senderId, CreateMessageDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Content))
+            return new Response<string>(HttpStatusCode.BadRequest, "Message cannot be empty");
+        if (dto.Content.Length > 2000)
+            return new Response<string>(HttpStatusCode.BadRequest, "Message is too long");
+
         var conv = await context.Conversations.FindAsync(dto.ConversationId);
         if (conv == null)
             return new Response<string>(HttpStatusCode.NotFound, "Conversation not found");

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Domain.DTOs;
 using Infrastructure.Responses;
 using Microsoft.AspNetCore.Authorization;
@@ -27,6 +28,10 @@ public class AiController : ControllerBase
     [Authorize]
     public async Task<Response<AiCvAnalysisResultDto>> AnalyzeCvAsync([FromBody] AiCvAnalysisRequestDto dto)
     {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(idClaim, out var userId))
+            dto.UserId = userId;
+
         return await _aiCareerService.AnalyzeCvAsync(dto);
     }
 

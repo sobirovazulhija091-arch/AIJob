@@ -21,7 +21,7 @@ public class UserSettingsService(UserManager<User> userManager) : IUserSettingsS
 
         var result = new UserSettingsDto
         {
-            Theme = GetClaimValue(claims, ThemeClaim) ?? "system",
+            Theme = GetClaimValue(claims, ThemeClaim) ?? "light",
             BrandColor = GetClaimValue(claims, BrandClaim) ?? "blue",
             EmailNotifications = TryParseBool(GetClaimValue(claims, EmailClaim), true),
             PushNotifications = TryParseBool(GetClaimValue(claims, PushClaim), true),

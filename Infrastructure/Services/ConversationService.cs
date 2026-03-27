@@ -41,11 +41,13 @@ public class ConversationService(ApplicationDbContext dbContext) : IConversation
         return new Response<List<Conversation>>(HttpStatusCode.OK, "ok", list);
     }
 
-    public async Task<Response<Conversation>> GetByIdAsync(int id)
+    public async Task<Response<Conversation>> GetByIdAsync(int id, int userId)
     {
         var get = await context.Conversations.FindAsync(id);
         if (get == null)
             return new Response<Conversation>(HttpStatusCode.NotFound, "Conversation not found");
+        if (get.User1Id != userId && get.User2Id != userId)
+            return new Response<Conversation>(HttpStatusCode.Forbidden, "You are not in this conversation");
         return new Response<Conversation>(HttpStatusCode.OK, "ok", get);
     }
 }

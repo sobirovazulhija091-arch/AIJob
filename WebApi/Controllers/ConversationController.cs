@@ -33,6 +33,6 @@ public class ConversationController : ControllerBase
     [HttpGet("{id}")]
     public async Task<Response<Conversation>> GetByIdAsync(int id)
     {
-        return await _conversationService.GetByIdAsync(id);
+        return await _conversationService.GetByIdAsync(id, GetUserId());
     }
 }

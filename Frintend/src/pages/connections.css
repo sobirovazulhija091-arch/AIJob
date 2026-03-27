@@ -1,0 +1,220 @@
+/* Connections — grow & manage network */
+
+.li-conn-col {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.li-conn-hero {
+  background: var(--li-card);
+  border-radius: 12px;
+  box-shadow: var(--li-shadow);
+  border: 1px solid var(--li-line);
+  padding: 18px 20px 20px;
+}
+
+.li-conn-invite {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--li-line);
+  background: linear-gradient(145deg, rgba(10, 102, 194, 0.06), var(--li-field));
+}
+
+.li-conn-invite .li-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.li-conn-invite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.li-conn-invite-row .li-input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.li-conn-section {
+  margin-top: 8px;
+}
+
+.li-conn-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.li-conn-section-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: var(--li-text);
+}
+
+.li-conn-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--li-muted);
+}
+
+.li-conn-list {
+  display: grid;
+  gap: 10px;
+}
+
+.li-conn-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--li-line);
+  background: var(--li-card);
+  box-shadow: 0 4px 14px rgba(2, 6, 23, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.li-conn-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
+}
+
+html[data-theme='dark'] .li-conn-card:hover {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+}
+
+.li-conn-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #0a66c2, #3b82f6);
+  box-shadow: 0 6px 16px rgba(10, 102, 194, 0.28);
+}
+
+.li-conn-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.li-conn-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--li-text);
+  letter-spacing: -0.02em;
+}
+
+.li-conn-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--li-muted);
+  line-height: 1.4;
+}
+
+.li-conn-badge {
+  display: inline-flex;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+html[data-theme='dark'] .li-conn-badge {
+  color: #86efac;
+  background: rgba(21, 128, 61, 0.2);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.li-conn-badge--pending {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+html[data-theme='dark'] .li-conn-badge--pending {
+  color: #fbbf24;
+  background: rgba(180, 83, 9, 0.2);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+.li-conn-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.li-conn-pending-actions .li-btn {
+  font-size: 12px;
+  height: 36px;
+  padding: 0 14px;
+}
+
+.li-conn-pending-actions .li-btn.primary {
+  box-shadow: 0 4px 14px rgba(10, 102, 194, 0.25);
+}
+
+.li-conn-empty {
+  text-align: center;
+  padding: 28px 20px;
+  border-radius: 12px;
+  border: 1px dashed var(--li-line);
+  background: var(--li-field);
+  color: var(--li-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.li-conn-empty strong {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 900;
+  color: var(--li-text);
+  font-size: 15px;
+}
+
+.li-conn-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--li-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .li-conn-invite-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .li-conn-invite-row .li-btn.primary {
+    width: 100%;
+  }
+  .li-conn-pending-actions {
+    width: 100%;
+    margin-top: 10px;
+  }
+  .li-conn-card {
+    flex-wrap: wrap;
+  }
+}

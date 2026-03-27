@@ -74,4 +74,24 @@ public class UserProfileService(ApplicationDbContext dbContext) : IUserProfileSe
             return new Response<UserProfile>(HttpStatusCode.NotFound, "UserProfile not found");
         return new Response<UserProfile>(HttpStatusCode.OK, "ok", get);
     }
+
+    public async Task<Response<List<UserPublicProfileDto>>> GetPublicProfilesByUserIdsAsync(List<int> userIds)
+    {
+        var distinctIds = userIds.Distinct().ToList();
+        if (distinctIds.Count == 0)
+            return new Response<List<UserPublicProfileDto>>(HttpStatusCode.OK, "ok", []);
+
+        var profiles = await context.UserProfiles
+            .Where(p => distinctIds.Contains(p.UserId))
+            .Select(p => new UserPublicProfileDto
+            {
+                UserId = p.UserId,
+                FirstName = p.FirstName,
+                LastName = p.LastName,
+                FullName = (p.FirstName + " " + p.LastName).Trim()
+            })
+            .ToListAsync();
+
+        return new Response<List<UserPublicProfileDto>>(HttpStatusCode.OK, "ok", profiles);
+    }
 }

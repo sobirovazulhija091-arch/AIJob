@@ -55,4 +55,11 @@ public class UserProfileController : ControllerBase
     {
         return await _userProfileService.GetByUserIdAsync(userId);
     }
+
+    [HttpPost("public-by-users")]
+    [Authorize]
+    public async Task<Response<List<UserPublicProfileDto>>> GetPublicByUsersAsync([FromBody] List<int> userIds)
+    {
+        return await _userProfileService.GetPublicProfilesByUserIdsAsync(userIds);
+    }
 }

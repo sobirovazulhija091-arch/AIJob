@@ -9,4 +9,5 @@ public interface IUserProfileService
     Task<Response<string>> UpdateAsync(int id, UpdateUserProfileDto dto);
     Task<Response<string>> DeleteAsync(int id);
     Task<Response<UserProfile>> GetByUserIdAsync(int userId);
+    Task<Response<List<UserPublicProfileDto>>> GetPublicProfilesByUserIdsAsync(List<int> userIds);
 }
