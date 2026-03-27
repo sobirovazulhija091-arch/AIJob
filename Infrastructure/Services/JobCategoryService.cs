@@ -10,7 +10,15 @@ public class JobCategoryService(ApplicationDbContext dbContext) : IJobCategorySe
 
     public async Task<Response<string>> CreateAsync(CreateJobCategoryDto dto)
     {
-        var category = new JobCategory { Name = dto.Name };
+        var name = dto.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return new Response<string>(HttpStatusCode.BadRequest, "JobCategory name is required");
+
+        var exists = await context.JobCategories.AnyAsync(x => x.Name.ToLower() == name.ToLower());
+        if (exists)
+            return new Response<string>(HttpStatusCode.BadRequest, "Job category already exists. You cannot add the same category twice.");
+
+        var category = new JobCategory { Name = name };
         await context.JobCategories.AddAsync(category);
         await context.SaveChangesAsync();
         return new Response<string>(HttpStatusCode.OK, "Add JobCategory successfully");
@@ -36,7 +44,15 @@ public class JobCategoryService(ApplicationDbContext dbContext) : IJobCategorySe
         if (update == null)
             return new Response<string>(HttpStatusCode.NotFound, "JobCategory not found");
 
-        update.Name = dto.Name;
+        var name = dto.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return new Response<string>(HttpStatusCode.BadRequest, "JobCategory name is required");
+
+        var exists = await context.JobCategories.AnyAsync(x => x.Id != id && x.Name.ToLower() == name.ToLower());
+        if (exists)
+            return new Response<string>(HttpStatusCode.BadRequest, "Job category already exists. You cannot add the same category twice.");
+
+        update.Name = name;
         await context.SaveChangesAsync();
         return new Response<string>(HttpStatusCode.OK, "ok");
     }

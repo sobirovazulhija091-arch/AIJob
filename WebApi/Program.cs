@@ -4,11 +4,14 @@ using Infrastructure.Data;
 using Infrastructure.Interfaces;
 using Infrastructure.Services;
 using Infrastructure;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +73,7 @@ builder.Services.AddScoped<ILanguageService, LanguageService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IProfileSkillService, ProfileSkillService>();
 builder.Services.AddScoped<IProfileLanguageService, ProfileLanguageService>();
+builder.Services.AddScoped<IUserSettingsService, UserSettingsService>();
 builder.Services.AddScoped<IConnectionService, ConnectionService>();
 builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IMessageService, MessageService>();
@@ -77,6 +81,7 @@ builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<IEndorsementService, EndorsementService>();
 builder.Services.AddScoped<IRecommendationService, RecommendationService>();
 builder.Services.AddScoped<IGoogleAiService, GoogleAiService>();
+builder.Services.AddScoped<IAiCareerService, AiCareerService>();
 builder.Services.AddScoped<IJobMatchingService, JobMatchingService>();
 
 builder.Services.AddIdentityCore<User>(options =>
@@ -91,7 +96,7 @@ builder.Services.AddIdentityCore<User>(options =>
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var key = Encoding.UTF8.GetBytes(jwtSection["Key"]!);
 
-builder.Services.AddAuthentication(options =>
+var authBuilder = builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -109,7 +114,96 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
+var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
+var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+var githubClientId = builder.Configuration["Authentication:GitHub:ClientId"];
+var githubClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"];
+
+var hasGoogle = !string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret);
+var hasGithub = !string.IsNullOrWhiteSpace(githubClientId) && !string.IsNullOrWhiteSpace(githubClientSecret);
+
+if (hasGoogle || hasGithub)
+{
+    authBuilder.AddCookie("External");
+}
+
+if (hasGoogle)
+{
+    authBuilder.AddGoogle("Google", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = googleClientId!;
+        options.ClientSecret = googleClientSecret!;
+        options.CallbackPath = "/signin-google";
+    });
+}
+
+if (hasGithub)
+{
+    authBuilder.AddOAuth("GitHub", options =>
+    {
+        options.SignInScheme = "External";
+        options.ClientId = githubClientId!;
+        options.ClientSecret = githubClientSecret!;
+        options.CallbackPath = "/signin-github";
+        options.AuthorizationEndpoint = "https://github.com/login/oauth/authorize";
+        options.TokenEndpoint = "https://github.com/login/oauth/access_token";
+        options.UserInformationEndpoint = "https://api.github.com/user";
+        options.Scope.Add("user:email");
+        options.SaveTokens = true;
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+                context.Request.Headers.UserAgent = "AIJobApp";
+                var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", context.AccessToken);
+                var response = await context.Backchannel.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, context.HttpContext.RequestAborted);
+                response.EnsureSuccessStatusCode();
+
+                await using var user = await response.Content.ReadAsStreamAsync(context.HttpContext.RequestAborted);
+                using var payload = System.Text.Json.JsonDocument.Parse(user);
+                var root = payload.RootElement;
+                var id = root.TryGetProperty("id", out var idProp) ? idProp.ToString() : null;
+                var name = root.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                var email = root.TryGetProperty("email", out var emailProp) ? emailProp.GetString() : null;
+
+                if (!string.IsNullOrWhiteSpace(id))
+                    context.Identity?.AddClaim(new Claim(ClaimTypes.NameIdentifier, id));
+                if (!string.IsNullOrWhiteSpace(name))
+                    context.Identity?.AddClaim(new Claim(ClaimTypes.Name, name));
+                if (!string.IsNullOrWhiteSpace(email))
+                    context.Identity?.AddClaim(new Claim(ClaimTypes.Email, email));
+            }
+        };
+    });
+}
+
 builder.Services.AddAuthorization();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .WithOrigins(
+                "http://localhost:5000",
+                "https://localhost:5001",
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:7173",
+                "https://localhost:7173",
+                "http://localhost:5206",
+                "https://localhost:7046",
+                "http://localhost:5076",
+                "https://localhost:7076"
+            );
+    });
+});
 
 var app = builder.Build();
 
@@ -159,8 +253,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+app.UseMiddleware<ApiExceptionMiddleware>();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();

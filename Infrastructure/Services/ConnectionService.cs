@@ -35,6 +35,23 @@ public class ConnectionService(ApplicationDbContext dbContext) : IConnectionServ
         return new Response<string>(HttpStatusCode.OK, "Connection request sent");
     }
 
+    public async Task<Response<string>> SendRequestByEmailAsync(int requesterId, string addresseeEmail)
+    {
+        if (string.IsNullOrWhiteSpace(addresseeEmail))
+            return new Response<string>(HttpStatusCode.BadRequest, "Email is required");
+
+        var normalizedEmail = addresseeEmail.Trim().ToUpperInvariant();
+        var addresseeId = await context.Users
+            .Where(u => u.NormalizedEmail == normalizedEmail)
+            .Select(u => u.Id)
+            .FirstOrDefaultAsync();
+
+        if (addresseeId <= 0)
+            return new Response<string>(HttpStatusCode.BadRequest, "User not found");
+
+        return await SendRequestAsync(requesterId, addresseeId);
+    }
+
     public async Task<Response<string>> RespondToRequestAsync(int connectionId, int userId, ConnectionStatus status)
     {
         var conn = await context.Connections.FindAsync(connectionId);

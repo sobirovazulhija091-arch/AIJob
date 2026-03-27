@@ -35,6 +35,13 @@ public class ConnectionController : ControllerBase
         return ToHttpResult(result);
     }
 
+    [HttpPost("send-by-email")]
+    public async Task<IActionResult> SendRequestByEmailAsync([FromBody] SendConnectionByEmailDto dto)
+    {
+        var result = await _connectionService.SendRequestByEmailAsync(GetUserId(), dto.Email);
+        return ToHttpResult(result);
+    }
+
     [HttpPut("{connectionId}/respond")]
     public async Task<IActionResult> RespondAsync(int connectionId, [FromBody] UpdateConnectionDto dto)
     {

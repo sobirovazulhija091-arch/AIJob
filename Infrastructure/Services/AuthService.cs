@@ -69,11 +69,60 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByEmailAsync(loginDto.Email);
         if (user is null)
-            throw new UnauthorizedAccessException("Invalid credentials");
+            throw new InvalidOperationException("Email does not exist");
 
         var check = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
         if (!check.Succeeded)
-            throw new UnauthorizedAccessException("Invalid credentials");
+            throw new UnauthorizedAccessException("Incorrect password");
+
+        var token = GenerateJwtToken(user);
+        var refreshToken = await CreateRefreshTokenAsync(user);
+
+        return new AuthResponseDto
+        {
+            Token = token,
+            RefreshToken = refreshToken
+        };
+    }
+
+    public async Task<AuthResponseDto> ExternalLoginAsync(string provider, string providerKey, string? email, string? fullName)
+    {
+        var user = await _userManager.FindByLoginAsync(provider, providerKey);
+
+        if (user is null && !string.IsNullOrWhiteSpace(email))
+        {
+            user = await _userManager.FindByEmailAsync(email);
+        }
+
+        if (user is null)
+        {
+            var normalizedProvider = provider.ToLowerInvariant();
+            var fallbackEmail = !string.IsNullOrWhiteSpace(email) ? email : $"{normalizedProvider}-{providerKey}@local.auth";
+            var fallbackName = !string.IsNullOrWhiteSpace(fullName) ? fullName : $"OAuth {provider} User";
+
+            user = new User
+            {
+                UserName = fallbackEmail,
+                Email = fallbackEmail,
+                FullName = fallbackName,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await _userManager.CreateAsync(user);
+            if (!createResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
+
+            await _userManager.AddToRoleAsync(user, "Candidate");
+        }
+
+        var existingLogin = await _userManager.FindByLoginAsync(provider, providerKey);
+        if (existingLogin is null)
+        {
+            var addLoginResult = await _userManager.AddLoginAsync(user, new UserLoginInfo(provider, providerKey, provider));
+            if (!addLoginResult.Succeeded)
+                throw new InvalidOperationException(string.Join("; ", addLoginResult.Errors.Select(e => e.Description)));
+        }
 
         var token = GenerateJwtToken(user);
         var refreshToken = await CreateRefreshTokenAsync(user);
@@ -92,7 +141,7 @@ public class AuthService : IAuthService
 
         if (stored == null)
         {
-            throw new UnauthorizedAccessException("Invalid refresh token");
+            throw new UnauthorizedAccessException("Refresh token is invalid or expired");
         }
 
         var user = await _context.Users.SingleAsync(u => u.Id == stored.UserId);
@@ -126,7 +175,7 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user is null)
-            return;
+            throw new InvalidOperationException("Email does not exist");
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
@@ -140,11 +189,11 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user is null)
-            throw new UnauthorizedAccessException("Invalid reset request");
+            throw new InvalidOperationException("Email does not exist");
 
         var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
         if (!result.Succeeded)
-            throw new UnauthorizedAccessException("Invalid or expired reset token");
+            throw new UnauthorizedAccessException("Reset token is invalid or expired");
 
         user.UpdatedAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
@@ -164,12 +213,18 @@ public class AuthService : IAuthService
 
         var roles = _userManager.GetRolesAsync(user).GetAwaiter().GetResult();
 
+        var emailValue = user.Email ?? user.UserName ?? $"{user.Id}@local";
+        var displayName = user.FullName ?? user.UserName ?? emailValue ?? user.Id.ToString();
+
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("UserId", user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.FullName ?? user.UserName ?? user.Email ?? user.Id.ToString())
+            // Ensure controllers using ClaimTypes.NameIdentifier can resolve current user id.
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, emailValue),
+            new Claim(ClaimTypes.Email, emailValue),
+            new Claim(ClaimTypes.Name, displayName)
         };
 
         claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));

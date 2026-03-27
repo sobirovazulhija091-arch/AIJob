@@ -66,6 +66,7 @@ public class JobService(ApplicationDbContext dbContext):IJobService
     public async Task<PagedResult<Job>> GetPagedAsync(JobFilter filter,PagedQuery querypage)
     {
         var query = context.Jobs.AsQueryable();
+        var skillQuery = context.JobSkills.Join(context.Skills, js => js.SkillId, s => s.Id, (js, s) => new { js.JobId, s.Name });
         if (filter.OrganizationId!=null)
         {
             query = query.Where(j => j.OrganizationId == filter.OrganizationId.Value);
@@ -76,11 +77,16 @@ public class JobService(ApplicationDbContext dbContext):IJobService
         }
         if (filter.Title!=null)
         {
-            query = query.Where(j => j.Title.Contains(filter.Title));
+            var pattern = $"%{filter.Title.Trim()}%";
+            query = query.Where(j =>
+                EF.Functions.ILike(j.Title, pattern) ||
+                (j.Description != null && EF.Functions.ILike(j.Description, pattern)) ||
+                skillQuery.Any(x => x.JobId == j.Id && EF.Functions.ILike(x.Name, pattern)));
         }
         if (filter.Location!=null)
         {
-            query = query.Where(j => j.Location.Contains(filter.Location));
+            var pattern = $"%{filter.Location.Trim()}%";
+            query = query.Where(j => j.Location != null && EF.Functions.ILike(j.Location, pattern));
         }
         if (filter.JobType!=null)
         {
@@ -116,8 +122,22 @@ public class JobService(ApplicationDbContext dbContext):IJobService
 
     public async Task<Response<List<Job>>> SearchByTitleAsync(string title)
     {
-       var job = await context.Jobs.Where(j=>j.Title.Contains(title)).ToListAsync();
-       return new Response<List<Job>>(HttpStatusCode.OK,"ok",job);
+       var term = title?.Trim();
+       if (string.IsNullOrWhiteSpace(term))
+           return new Response<List<Job>>(HttpStatusCode.BadRequest, "Search text is required");
+
+       var pattern = $"%{term}%";
+       var skillQuery = context.JobSkills.Join(context.Skills, js => js.SkillId, s => s.Id, (js, s) => new { js.JobId, s.Name });
+       var job = await context.Jobs
+           .Where(j =>
+               EF.Functions.ILike(j.Title, pattern) ||
+               (j.Description != null && EF.Functions.ILike(j.Description, pattern)) ||
+               skillQuery.Any(x => x.JobId == j.Id && EF.Functions.ILike(x.Name, pattern)))
+           .ToListAsync();
+
+       return job.Count == 0
+           ? new Response<List<Job>>(HttpStatusCode.NotFound, "No jobs found for this search", [])
+           : new Response<List<Job>>(HttpStatusCode.OK, "ok", job);
     }
 
     public async Task<Response<string>> UpdateAsync(int id, UpdateJobDto dto)
