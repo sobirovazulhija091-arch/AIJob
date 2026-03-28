@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthPage } from './pages/AuthPage'
 import { hasRole, isAuthed } from './lib/auth'
 import { useI18n } from './lib/i18n'
@@ -27,16 +27,18 @@ function HomePublic() {
   return (
     <div className="li-grid">
       <div />
-      <section className="li-card li-card-pad">
-        <div className="li-h1">{t('home.public.title')}</div>
-        <p className="li-p">{t('home.public.sub')}</p>
-        <div className="li-btn-row">
-          <a className="li-btn primary" href="/auth">
+      <section className="li-card li-home-hero" aria-labelledby="home-public-title">
+        <h1 id="home-public-title" className="li-home-title">
+          {t('home.public.title')}
+        </h1>
+        <p className="li-home-sub">{t('home.public.sub')}</p>
+        <div className="li-home-cta">
+          <Link className="li-btn li-btn--hero primary" to="/auth">
             {t('home.public.signin')}
-          </a>
-          <a className="li-btn" href="/auth">
+          </Link>
+          <Link className="li-btn li-btn--hero li-btn--outline" to="/auth">
             {t('home.public.join')}
-          </a>
+          </Link>
         </div>
       </section>
       <div />
