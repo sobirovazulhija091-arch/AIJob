@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { clearSession, getDisplayName, getEmail, getRoles, initialsFromLabel } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import './shell.css'
@@ -12,6 +13,10 @@ function primaryRoleLabel(roles: string[], t: (key: string) => string): string |
 
 export function Shell() {
   const { t } = useI18n()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const aiWide = location.pathname === '/ai'
+  const [searchQ, setSearchQ] = useState('')
   const roles = getRoles()
   const isAdmin = roles.includes('Admin')
   const showApplications = roles.includes('Candidate') || isAdmin
@@ -19,6 +24,19 @@ export function Shell() {
 
   const display = getDisplayName() ?? getEmail()?.split('@')[0] ?? t('settings.title.fallback')
   const roleLabel = primaryRoleLabel(roles, t)
+
+  useEffect(() => {
+    if (location.pathname !== '/jobs') return
+    const q = new URLSearchParams(location.search).get('q') ?? ''
+    setSearchQ(q)
+  }, [location.pathname, location.search])
+
+  function runGlobalSearch(e: FormEvent) {
+    e.preventDefault()
+    const q = searchQ.trim()
+    if (q) navigate(`/jobs?q=${encodeURIComponent(q)}`)
+    else navigate('/jobs')
+  }
 
   return (
     <>
@@ -38,13 +56,27 @@ export function Shell() {
               </span>
             </div>
 
-            <div className="li-search">
+            <form className="li-search" role="search" onSubmit={runGlobalSearch} title={t('search.hint')}>
               <svg className="li-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
                 <path d="M20 20 16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
-              <input type="search" autoComplete="off" placeholder={t('search.placeholder')} />
-            </div>
+              <input
+                type="search"
+                autoComplete="off"
+                name="q"
+                placeholder={t('search.placeholder')}
+                aria-label={t('search.placeholder')}
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+              />
+              <button type="submit" className="li-search-submit" aria-label={t('search.submit')}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+                  <path d="M20 20 16 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </form>
           </div>
 
           <div className="li-topbar-row li-topbar-nav">
@@ -77,7 +109,7 @@ export function Shell() {
         </div>
       </header>
 
-      <main className="li-wrap">
+      <main className={aiWide ? 'li-wrap li-wrap--ai' : 'li-wrap'}>
         <Outlet />
       </main>
     </>

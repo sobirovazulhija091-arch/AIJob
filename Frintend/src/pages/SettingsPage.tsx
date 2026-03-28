@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
+import { NiceSelect } from '../components/NiceSelect'
 import { getMySettings, updateMySettings, type UserSettings } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 import { applyTheme, normalizeTheme } from '../lib/theme'
@@ -32,6 +33,8 @@ function IconHelp() {
 }
 
 export function SettingsPage() {
+  const themeLabelId = useId()
+  const languageLabelId = useId()
   const { t, setLocale } = useI18n()
   const [model, setModel] = useState<UserSettings | null>(null)
   const [loading, setLoading] = useState(true)
@@ -101,29 +104,35 @@ export function SettingsPage() {
               <h3 className="li-settings-panel-title">{t('settings.section.display')}</h3>
               <p className="li-field-hint">{t('settings.section.display.hint')}</p>
               <div className="li-grid-2">
-                <label className="li-stack">
-                  <span className="li-label">{t('settings.theme')}</span>
-                  <select
-                    className="li-select"
+                <div className="li-stack">
+                  <span className="li-label" id={themeLabelId}>
+                    {t('settings.theme')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={themeLabelId}
                     value={model.theme}
-                    onChange={(e) => setModel({ ...model, theme: normalizeTheme(e.target.value) })}
-                  >
-                    <option value="light">{t('theme.light')}</option>
-                    <option value="dark">{t('theme.dark')}</option>
-                  </select>
-                </label>
-                <label className="li-stack">
-                  <span className="li-label">{t('settings.language')}</span>
-                  <select
-                    className="li-select"
+                    onChange={(v) => setModel({ ...model, theme: normalizeTheme(v) })}
+                    options={[
+                      { value: 'light', label: t('theme.light') },
+                      { value: 'dark', label: t('theme.dark') },
+                    ]}
+                  />
+                </div>
+                <div className="li-stack">
+                  <span className="li-label" id={languageLabelId}>
+                    {t('settings.language')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={languageLabelId}
                     value={model.language}
-                    onChange={(e) => setModel({ ...model, language: e.target.value })}
-                  >
-                    <option value="en">{t('lang.en')}</option>
-                    <option value="ru">{t('lang.ru')}</option>
-                    <option value="tg">{t('lang.tg')}</option>
-                  </select>
-                </label>
+                    onChange={(v) => setModel({ ...model, language: v })}
+                    options={[
+                      { value: 'en', label: t('lang.en') },
+                      { value: 'ru', label: t('lang.ru') },
+                      { value: 'tg', label: t('lang.tg') },
+                    ]}
+                  />
+                </div>
               </div>
             </div>
 

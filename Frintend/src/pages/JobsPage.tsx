@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { NiceSelect } from '../components/NiceSelect'
 import { getJobs, type Job } from '../lib/api'
 import './jobs.css'
 
@@ -56,6 +57,9 @@ function formatSalaryRange(min: number, max: number): string {
 }
 
 export function JobsPage() {
+  const [searchParams] = useSearchParams()
+  const jobTypeLabelId = useId()
+  const jobLevelLabelId = useId()
   const [items, setItems] = useState<Job[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -79,8 +83,23 @@ export function JobsPage() {
     })()
   }, [])
 
+  useEffect(() => {
+    setSearch(searchParams.get('q') ?? '')
+  }, [searchParams])
+
   const jobTypes = useMemo(() => [...new Set(items.map((j) => j.jobType))].sort(), [items])
   const levels = useMemo(() => [...new Set(items.map((j) => j.experienceLevel))].sort(), [items])
+  const typeOptions = useMemo(
+    () => [
+      { value: '', label: 'All types' },
+      ...jobTypes.map((ty) => ({ value: ty, label: formatJobType(ty) })),
+    ],
+    [jobTypes],
+  )
+  const levelOptions = useMemo(
+    () => [{ value: '', label: 'All levels' }, ...levels.map((l) => ({ value: l, label: l }))],
+    [levels],
+  )
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -136,28 +155,28 @@ export function JobsPage() {
               autoComplete="off"
             />
           </label>
-          <label className="li-stack">
-            <span className="li-label">Job type</span>
-            <select className="li-select" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-              <option value="">All types</option>
-              {jobTypes.map((t) => (
-                <option key={t} value={t}>
-                  {formatJobType(t)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="li-stack">
-            <span className="li-label">Experience</span>
-            <select className="li-select" value={levelFilter} onChange={(e) => setLevelFilter(e.target.value)}>
-              <option value="">All levels</option>
-              {levels.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="li-stack">
+            <span className="li-label" id={jobTypeLabelId}>
+              Job type
+            </span>
+            <NiceSelect
+              aria-labelledby={jobTypeLabelId}
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={typeOptions}
+            />
+          </div>
+          <div className="li-stack">
+            <span className="li-label" id={jobLevelLabelId}>
+              Experience
+            </span>
+            <NiceSelect
+              aria-labelledby={jobLevelLabelId}
+              value={levelFilter}
+              onChange={setLevelFilter}
+              options={levelOptions}
+            />
+          </div>
           <div className="li-jobs-filter-actions">
             <button className="li-job-ghost" type="button" onClick={clearFilters} disabled={!hasActiveFilters}>
               Clear filters

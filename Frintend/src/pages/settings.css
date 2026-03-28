@@ -71,6 +71,10 @@ html[data-theme='dark'] .li-settings-banner--err {
   gap: 14px;
 }
 
+.li-settings-panel .li-nice-select {
+  width: 100%;
+}
+
 .li-settings-check-row {
   display: flex;
   align-items: flex-start;

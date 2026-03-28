@@ -53,6 +53,10 @@ public class AiController : ControllerBase
     [Authorize]
     public async Task<Response<AiDraftResultDto>> DraftCoverLetterAsync([FromBody] AiDraftCoverLetterRequestDto dto)
     {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(idClaim, out var uid))
+            dto.UserId = uid;
+
         return await _aiCareerService.DraftCoverLetterAsync(dto);
     }
 

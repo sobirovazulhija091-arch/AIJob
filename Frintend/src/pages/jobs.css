@@ -180,7 +180,8 @@ html[data-theme='dark'] .li-job-card:hover {
 }
 
 .li-jobs-filters .li-input,
-.li-jobs-filters .li-select {
+.li-jobs-filters .li-select,
+.li-jobs-filters .li-nice-select {
   width: 100%;
 }
 

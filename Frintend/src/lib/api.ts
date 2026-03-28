@@ -256,3 +256,56 @@ export async function analyzeCv(
   return ((await res.json()) as Response<CvAnalysis>).data
 }
 
+export type SkillGapResult = {
+  matchScore: number
+  fitSummary: string
+  strengths: string[]
+  missingSkills: string[]
+  nextSteps: string[]
+}
+
+export async function getSkillGap(userId: number, jobId: number): Promise<SkillGapResult> {
+  const res = await authedFetch(`/api/Ai/skill-gap/${userId}/${jobId}`, { method: 'GET' })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<SkillGapResult>).data
+}
+
+export type DraftLetterResult = { subject: string; content: string }
+
+export async function draftCoverLetter(payload: {
+  jobId: number
+  tone?: string
+  extraContext?: string
+}): Promise<DraftLetterResult> {
+  const res = await authedFetch(`/api/Ai/draft-cover-letter`, {
+    method: 'POST',
+    body: JSON.stringify({
+      jobId: payload.jobId,
+      tone: payload.tone || undefined,
+      extraContext: payload.extraContext || undefined,
+    }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<DraftLetterResult>).data
+}
+
+export type JobImproveResult = {
+  improvedTitle: string
+  improvedDescription: string
+  suggestedSkills: string[]
+  suggestedResponsibilities: string[]
+  suggestedBenefits: string[]
+}
+
+export async function improveJob(payload: { jobId: number; applyToJob?: boolean }): Promise<JobImproveResult> {
+  const res = await authedFetch(`/api/Ai/improve-job`, {
+    method: 'POST',
+    body: JSON.stringify({
+      jobId: payload.jobId,
+      applyToJob: payload.applyToJob ?? false,
+    }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<JobImproveResult>).data
+}
+

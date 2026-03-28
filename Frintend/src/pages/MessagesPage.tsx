@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { NiceSelect } from '../components/NiceSelect'
 import {
   createConversation,
   getConversations,
@@ -61,6 +62,19 @@ export function MessagesPage() {
   const [error, setError] = useState('')
   const chatEndRef = useRef<HTMLDivElement>(null)
   const chatAreaRef = useRef<HTMLDivElement>(null)
+
+  const startChatOptions = useMemo(() => {
+    const opts = [{ value: '', label: 'Start chat from connection' }]
+    if (me == null) return opts
+    for (const c of connections) {
+      const other = c.requesterId === me ? c.addresseeId : c.requesterId
+      opts.push({
+        value: String(other),
+        label: names[other] ?? `User ${other}`,
+      })
+    }
+    return opts
+  }, [connections, names, me])
 
   const active = useMemo(() => convos.find((c) => c.id === activeId), [convos, activeId])
   const activeOtherUserId = active ? (active.user1Id === me ? active.user2Id : active.user1Id) : 0
@@ -153,17 +167,12 @@ export function MessagesPage() {
           <p>Open a thread or start one from your connections</p>
         </div>
         <div className="li-msg-start">
-          <select className="li-select" value={startUserId || ''} onChange={(e) => setStartUserId(parseInt(e.target.value || '0', 10))}>
-            <option value="">Start chat from connection</option>
-            {connections.map((c) => {
-              const other = c.requesterId === me ? c.addresseeId : c.requesterId
-              return (
-                <option key={c.id} value={other}>
-                  {names[other] ?? `User ${other}`}
-                </option>
-              )
-            })}
-          </select>
+          <NiceSelect
+            aria-label="Start chat from connection"
+            value={startUserId ? String(startUserId) : ''}
+            onChange={(v) => setStartUserId(parseInt(v || '0', 10))}
+            options={startChatOptions}
+          />
           <button className="li-btn primary" onClick={startConversation} type="button">
             New chat
           </button>

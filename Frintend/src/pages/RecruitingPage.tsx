@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { NiceSelect } from '../components/NiceSelect'
 import {
   changeApplicationStatus,
   getApplicationsByJob,
@@ -75,6 +76,7 @@ function formatJobSalary(job: Job): string {
 
 export function RecruitingPage() {
   const { t } = useI18n()
+  const pickJobLabelId = useId()
   const [jobs, setJobs] = useState<Job[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [jobId, setJobId] = useState(0)
@@ -84,6 +86,13 @@ export function RecruitingPage() {
   const [error, setError] = useState('')
 
   const selectedJob = useMemo(() => jobs.find((j) => j.id === jobId), [jobs, jobId])
+  const jobOptions = useMemo(
+    () => [
+      { value: '', label: t('recruiting.selectPlaceholder') },
+      ...jobs.map((j) => ({ value: String(j.id), label: j.title })),
+    ],
+    [jobs, t],
+  )
 
   useEffect(() => {
     void (async () => {
@@ -193,21 +202,17 @@ export function RecruitingPage() {
 
           {!jobsLoading && jobs.length > 0 ? (
             <div className="li-recruit-picker">
-              <label className="li-stack">
-                <span className="li-label">{t('recruiting.pickJob')}</span>
-                <select
-                  className="li-select"
-                  value={jobId || ''}
-                  onChange={(e) => setJobId(parseInt(e.target.value || '0', 10))}
-                >
-                  <option value="">{t('recruiting.selectPlaceholder')}</option>
-                  {jobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="li-stack">
+                <span className="li-label" id={pickJobLabelId}>
+                  {t('recruiting.pickJob')}
+                </span>
+                <NiceSelect
+                  aria-labelledby={pickJobLabelId}
+                  value={jobId ? String(jobId) : ''}
+                  onChange={(v) => setJobId(parseInt(v || '0', 10))}
+                  options={jobOptions}
+                />
+              </div>
               {selectedJob ? (
                 <div className="li-recruit-job-summary">
                   <strong>{selectedJob.title}</strong>

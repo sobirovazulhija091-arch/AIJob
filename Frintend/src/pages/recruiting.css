@@ -219,6 +219,10 @@
   margin-bottom: 8px;
 }
 
+.li-recruit-picker .li-nice-select {
+  width: 100%;
+}
+
 .li-recruit-job-summary {
   margin-top: 12px;
   padding: 10px 12px;
