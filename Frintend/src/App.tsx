@@ -6,6 +6,7 @@ import { Shell } from './app/Shell'
 import { JobsPage } from './pages/JobsPage'
 import { FeedPage } from './pages/FeedPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { MemberProfilePage } from './pages/MemberProfilePage'
 import { ApplicationsPage } from './pages/ApplicationsPage'
 import { ConnectionsPage } from './pages/ConnectionsPage'
 import { MessagesPage } from './pages/MessagesPage'
@@ -13,6 +14,8 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { AiPage } from './pages/AiPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { AdminPage } from './pages/AdminPage'
+import { DirectoryPage } from './pages/DirectoryPage'
+import { OrganizationProfilePage } from './pages/OrganizationProfilePage'
 import { RecruitingPage } from './pages/RecruitingPage'
 import type { ReactNode } from 'react'
 
@@ -55,6 +58,12 @@ export default function App() {
         <Route path="/" element={authed ? <FeedPage /> : <HomePublic />} />
         <Route path="/jobs" element={authed ? <JobsPage /> : <Navigate to="/auth" replace />} />
         <Route path="/profile" element={authed ? <ProfilePage /> : <Navigate to="/auth" replace />} />
+        <Route path="/people/:userId" element={authed ? <MemberProfilePage /> : <Navigate to="/auth" replace />} />
+        <Route path="/directory" element={authed ? <DirectoryPage /> : <Navigate to="/auth" replace />} />
+        <Route
+          path="/organizations/:orgId"
+          element={authed ? <OrganizationProfilePage /> : <Navigate to="/auth" replace />}
+        />
         <Route
           path="/applications"
           element={

@@ -1,12 +1,14 @@
 using System.Net;
 using Domain.DTOs;
 using Infrastructure.Data;
+using Infrastructure.Interfaces;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
 
-public class MessageService(ApplicationDbContext dbContext) : IMessageService
+public class MessageService(ApplicationDbContext dbContext, INotificationService notifications) : IMessageService
 {
     private readonly ApplicationDbContext context = dbContext;
+    private readonly INotificationService _notifications = notifications;
 
     public async Task<Response<string>> CreateAsync(int senderId, CreateMessageDto dto)
     {
@@ -30,6 +32,25 @@ public class MessageService(ApplicationDbContext dbContext) : IMessageService
         };
         await context.Messages.AddAsync(message);
         await context.SaveChangesAsync();
+
+        var recipientId = conv.User1Id == senderId ? conv.User2Id : conv.User1Id;
+        var preview = dto.Content.Trim();
+        if (preview.Length > 200) preview = preview[..200] + "…";
+        try
+        {
+            await _notifications.CreateAsync(new CreateNotificationDto
+            {
+                UserId = recipientId,
+                Type = NotificationType.MessageReceived,
+                Title = "New message",
+                Message = preview,
+            });
+        }
+        catch
+        {
+            // delivered in-app message even if notification row fails
+        }
+
         return new Response<string>(HttpStatusCode.OK, "Message sent");
     }
 

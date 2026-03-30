@@ -7,6 +7,7 @@ using Infrastructure.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Infrastructure.Services;
@@ -179,10 +180,21 @@ public class AuthService : IAuthService
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
+        var baseUrl = (_configuration["App:PublicWebUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        var emailEnc = Uri.EscapeDataString(dto.Email);
+        var tokenEnc = Uri.EscapeDataString(token);
+        var resetUrl = $"{baseUrl}/auth?reset=1&email={emailEnc}&token={tokenEnc}";
+
+        var body =
+            "Reset your CareerHub password using the link below (it expires after a while):\n\n" +
+            resetUrl +
+            "\n\nIf you did not request this, you can ignore this email.\n\n" +
+            "If the link does not work, open this message in a browser or contact support.";
+
         await _emailService.SendAsync(
             dto.Email,
             "Reset your password",
-            $"Your reset token: {token}");
+            body);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto)

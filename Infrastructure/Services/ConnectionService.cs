@@ -1,12 +1,14 @@
 using System.Net;
 using Domain.DTOs;
 using Infrastructure.Data;
+using Infrastructure.Interfaces;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
 
-public class ConnectionService(ApplicationDbContext dbContext) : IConnectionService
+public class ConnectionService(ApplicationDbContext dbContext, INotificationService notifications) : IConnectionService
 {
     private readonly ApplicationDbContext context = dbContext;
+    private readonly INotificationService _notifications = notifications;
 
     public async Task<Response<string>> SendRequestAsync(int requesterId, int addresseeId)
     {
@@ -32,6 +34,21 @@ public class ConnectionService(ApplicationDbContext dbContext) : IConnectionServ
         };
         await context.Connections.AddAsync(connection);
         await context.SaveChangesAsync();
+
+        try
+        {
+            await _notifications.CreateAsync(new CreateNotificationDto
+            {
+                UserId = addresseeId,
+                Type = NotificationType.ConnectionRequest,
+                Title = "Connection request",
+                Message = "Someone wants to connect with you on CareerHub.",
+            });
+        }
+        catch
+        {
+        }
+
         return new Response<string>(HttpStatusCode.OK, "Connection request sent");
     }
 
@@ -64,6 +81,24 @@ public class ConnectionService(ApplicationDbContext dbContext) : IConnectionServ
 
         conn.Status = status;
         await context.SaveChangesAsync();
+
+        if (status == ConnectionStatus.Accepted)
+        {
+            try
+            {
+                await _notifications.CreateAsync(new CreateNotificationDto
+                {
+                    UserId = conn.RequesterId,
+                    Type = NotificationType.ConnectionAccepted,
+                    Title = "Connection accepted",
+                    Message = "Your connection request was accepted.",
+                });
+            }
+            catch
+            {
+            }
+        }
+
         return new Response<string>(HttpStatusCode.OK, status == ConnectionStatus.Accepted ? "Connection accepted" : "Connection declined");
     }
 

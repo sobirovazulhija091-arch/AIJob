@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { NiceSelect } from '../components/NiceSelect'
 import {
   changeApplicationStatus,
@@ -292,7 +293,11 @@ export function RecruitingPage() {
                             {initials}
                           </div>
                           <div className="li-recruit-who">
-                            <p className="li-recruit-name">{name}</p>
+                            <p className="li-recruit-name">
+                              <Link className="li-recruit-name-link" to={`/people/${a.userId}`}>
+                                {name}
+                              </Link>
+                            </p>
                             <p className="li-recruit-meta">{t('recruiting.applicationRef')} #{a.id}</p>
                             <span className={`li-recruit-badge ${badgeClass}`}>{statusBadgeLabel(sk)}</span>
                           </div>

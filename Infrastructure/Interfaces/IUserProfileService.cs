@@ -10,4 +10,5 @@ public interface IUserProfileService
     Task<Response<string>> DeleteAsync(int id);
     Task<Response<UserProfile>> GetByUserIdAsync(int userId);
     Task<Response<List<UserPublicProfileDto>>> GetPublicProfilesByUserIdsAsync(List<int> userIds);
+    Task<Response<MemberProfileDto>> GetMemberProfileAsync(int userId);
 }

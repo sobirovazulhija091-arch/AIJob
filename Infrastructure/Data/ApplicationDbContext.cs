@@ -34,6 +34,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
     public DbSet<Conversation> Conversations { get; set; }
     public DbSet<Message> Messages { get; set; }
     public DbSet<Post> Posts { get; set; }
+    public DbSet<PostComment> PostComments { get; set; }
+    public DbSet<PostLike> PostLikes { get; set; }
     public DbSet<Endorsement> Endorsements { get; set; }
     public DbSet<Recommendation> Recommendations { get; set; }
 
@@ -237,6 +239,42 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .HasOne<User>()
             .WithMany()
             .HasForeignKey(p => p.UserId);
+
+        modelBuilder.Entity<Post>()
+            .HasOne<Post>()
+            .WithMany()
+            .HasForeignKey(p => p.RepostOfPostId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<PostLike>()
+            .HasOne<Post>()
+            .WithMany()
+            .HasForeignKey(l => l.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PostLike>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PostLike>()
+            .HasIndex(l => new { l.PostId, l.UserId })
+            .IsUnique();
+
+        modelBuilder.Entity<PostComment>()
+            .HasOne<Post>()
+            .WithMany()
+            .HasForeignKey(c => c.PostId);
+
+        modelBuilder.Entity<PostComment>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(c => c.UserId);
+
+        modelBuilder.Entity<PostComment>()
+            .Property(c => c.Content)
+            .HasMaxLength(2000);
 
         modelBuilder.Entity<Endorsement>()
             .HasOne<User>()

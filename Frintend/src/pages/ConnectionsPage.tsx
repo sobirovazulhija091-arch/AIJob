@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getMyConnections,
   getPendingConnections,
@@ -158,7 +159,11 @@ export function ConnectionsPage() {
                           {initialsFromLabel(label)}
                         </div>
                         <div className="li-conn-body">
-                          <p className="li-conn-name">{label}</p>
+                          <p className="li-conn-name">
+                            <Link className="li-conn-name-link" to={`/people/${oid}`}>
+                              {label}
+                            </Link>
+                          </p>
                           <p className="li-conn-meta">
                             {me
                               ? c.requesterId === me
@@ -196,7 +201,11 @@ export function ConnectionsPage() {
                           {initialsFromLabel(label)}
                         </div>
                         <div className="li-conn-body">
-                          <p className="li-conn-name">{label}</p>
+                          <p className="li-conn-name">
+                            <Link className="li-conn-name-link" to={`/people/${oid}`}>
+                              {label}
+                            </Link>
+                          </p>
                           <p className="li-conn-meta">Wants to connect with you on CareerHub.</p>
                           <span className="li-conn-badge li-conn-badge--pending">Pending</span>
                         </div>

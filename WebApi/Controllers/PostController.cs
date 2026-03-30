@@ -40,9 +40,23 @@ public class PostController : ControllerBase
 
     [HttpGet("feed")]
     [Authorize]
-    public async Task<Response<List<Post>>> GetFeedAsync()
+    public async Task<Response<List<PostFeedItemDto>>> GetFeedAsync()
     {
         return await _postService.GetFeedAsync(GetUserId());
+    }
+
+    [HttpPost("{postId}/like")]
+    [Authorize]
+    public async Task<Response<PostLikeStateDto>> ToggleLikeAsync(int postId)
+    {
+        return await _postService.ToggleLikeAsync(postId, GetUserId());
+    }
+
+    [HttpPost("{postId}/repost")]
+    [Authorize]
+    public async Task<Response<string>> RepostAsync(int postId)
+    {
+        return await _postService.RepostAsync(postId, GetUserId());
     }
 
     [HttpPut("{id}")]
@@ -57,5 +71,19 @@ public class PostController : ControllerBase
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _postService.DeleteAsync(id, GetUserId());
+    }
+
+    [HttpGet("{postId}/comments")]
+    [Authorize]
+    public async Task<Response<List<PostCommentDto>>> GetCommentsAsync(int postId)
+    {
+        return await _postService.GetCommentsAsync(postId, GetUserId());
+    }
+
+    [HttpPost("{postId}/comments")]
+    [Authorize]
+    public async Task<Response<PostCommentDto>> AddCommentAsync(int postId, [FromBody] CreatePostCommentDto dto)
+    {
+        return await _postService.AddCommentAsync(postId, GetUserId(), dto);
     }
 }

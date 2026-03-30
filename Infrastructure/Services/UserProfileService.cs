@@ -94,4 +94,23 @@ public class UserProfileService(ApplicationDbContext dbContext) : IUserProfileSe
 
         return new Response<List<UserPublicProfileDto>>(HttpStatusCode.OK, "ok", profiles);
     }
+
+    public async Task<Response<MemberProfileDto>> GetMemberProfileAsync(int userId)
+    {
+        var p = await context.UserProfiles.FirstOrDefaultAsync(x => x.UserId == userId);
+        if (p == null)
+            return new Response<MemberProfileDto>(HttpStatusCode.NotFound, "Profile not found");
+
+        var dto = new MemberProfileDto
+        {
+            UserId = p.UserId,
+            FirstName = p.FirstName ?? "",
+            LastName = p.LastName ?? "",
+            FullName = ($"{p.FirstName} {p.LastName}").Trim(),
+            AboutMe = p.AboutMe ?? "",
+            ExperienceYears = p.ExperienceYears,
+        };
+
+        return new Response<MemberProfileDto>(HttpStatusCode.OK, "ok", dto);
+    }
 }

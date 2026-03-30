@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { NiceSelect } from '../components/NiceSelect'
 import {
   createConversation,
   getConversations,
+  getMemberDirectory,
   getMessages,
-  getMyConnections,
   getPublicProfilesByUsers,
   sendMessage,
-  type Connection,
   type Conversation,
+  type MemberDirectoryEntry,
   type Message,
 } from '../lib/api'
 import { getUserId } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
 import './messages.css'
 
 function PlaceholderChatIcon() {
@@ -50,10 +52,20 @@ function formatMsgTime(m: Message): string {
   }
 }
 
+function directoryDisplayName(m: MemberDirectoryEntry): string {
+  const n = m.fullName?.trim()
+  if (n) return n
+  if (m.userName?.trim()) return m.userName.trim()
+  const e = m.email?.trim()
+  if (e) return e.split('@')[0] ?? e
+  return ''
+}
+
 export function MessagesPage() {
+  const { t } = useI18n()
   const me = getUserId()
   const [convos, setConvos] = useState<Conversation[]>([])
-  const [connections, setConnections] = useState<Connection[]>([])
+  const [directory, setDirectory] = useState<MemberDirectoryEntry[]>([])
   const [names, setNames] = useState<Record<number, string>>({})
   const [startUserId, setStartUserId] = useState<number>(0)
   const [activeId, setActiveId] = useState<number>(0)
@@ -63,22 +75,30 @@ export function MessagesPage() {
   const chatEndRef = useRef<HTMLDivElement>(null)
   const chatAreaRef = useRef<HTMLDivElement>(null)
 
+  const roleShort = (role: string) => {
+    const r = role?.trim()
+    if (r === 'Organization') return t('role.organization')
+    if (r === 'Admin') return t('role.platformTeam')
+    return t('role.candidate')
+  }
+
   const startChatOptions = useMemo(() => {
-    const opts = [{ value: '', label: 'Start chat from connection' }]
-    if (me == null) return opts
-    for (const c of connections) {
-      const other = c.requesterId === me ? c.addresseeId : c.requesterId
+    const opts = [{ value: '', label: t('messages.startPicker') }]
+    for (const m of directory) {
+      const labelBase = directoryDisplayName(m) || t('messages.unnamedMember')
       opts.push({
-        value: String(other),
-        label: names[other] ?? `User ${other}`,
+        value: String(m.id),
+        label: `${labelBase} — ${roleShort(m.role)}`,
       })
     }
     return opts
-  }, [connections, names, me])
+  }, [directory, t])
 
   const active = useMemo(() => convos.find((c) => c.id === activeId), [convos, activeId])
   const activeOtherUserId = active ? (active.user1Id === me ? active.user2Id : active.user1Id) : 0
-  const activeName = activeOtherUserId ? names[activeOtherUserId] ?? `User ${activeOtherUserId}` : 'Select a chat'
+  const activeName = activeOtherUserId
+    ? names[activeOtherUserId] ?? t('messages.unnamedMember')
+    : t('messages.selectChat')
   const activeInitials = initialsFromName(activeName)
 
   async function loadConvos() {
@@ -93,22 +113,22 @@ export function MessagesPage() {
       setNames((prev) => ({ ...prev, ...map }))
       if (!activeId && cs.length) setActiveId(cs[0].id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load conversations.')
+      setError(e instanceof Error ? e.message : t('messages.error.loadConvos'))
     }
   }
 
-  async function loadConnections() {
+  async function loadDirectory() {
     try {
-      const all = await getMyConnections()
-      const accepted = all.filter((c) => String(c.status).toLowerCase().includes('accept'))
-      setConnections(accepted)
-      const ids = accepted.flatMap((c) => [c.requesterId, c.addresseeId])
-      const profiles = await getPublicProfilesByUsers(ids)
+      const entries = await getMemberDirectory()
+      setDirectory(entries)
       const map: Record<number, string> = {}
-      for (const p of profiles) map[p.userId] = p.fullName || `${p.firstName} ${p.lastName}`.trim() || `User ${p.userId}`
+      for (const m of entries) {
+        const d = directoryDisplayName(m)
+        if (d) map[m.id] = d
+      }
       setNames((prev) => ({ ...prev, ...map }))
     } catch {
-      // ignore
+      // ignore — picker stays empty; user may retry by refresh
     }
   }
 
@@ -117,13 +137,13 @@ export function MessagesPage() {
     try {
       setMessages(await getMessages(id))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load messages.')
+      setError(e instanceof Error ? e.message : t('messages.error.loadMsgs'))
     }
   }
 
   useEffect(() => {
     void loadConvos()
-    void loadConnections()
+    void loadDirectory()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -143,7 +163,7 @@ export function MessagesPage() {
       setText('')
       await loadMessages(activeId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to send.')
+      setError(e instanceof Error ? e.message : t('messages.error.send'))
     }
   }
 
@@ -155,7 +175,7 @@ export function MessagesPage() {
       await loadConvos()
       setActiveId(c.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to start conversation.')
+      setError(e instanceof Error ? e.message : t('messages.error.start'))
     }
   }
 
@@ -163,18 +183,18 @@ export function MessagesPage() {
     <div className="li-msg-app">
       <aside className="li-msg-sidebar">
         <div className="li-msg-sidebar-head">
-          <h3>Messages</h3>
-          <p>Open a thread or start one from your connections</p>
+          <h3>{t('nav.messages')}</h3>
+          <p>{t('messages.sidebarSub')}</p>
         </div>
         <div className="li-msg-start">
           <NiceSelect
-            aria-label="Start chat from connection"
+            aria-label={t('messages.startPicker')}
             value={startUserId ? String(startUserId) : ''}
             onChange={(v) => setStartUserId(parseInt(v || '0', 10))}
             options={startChatOptions}
           />
           <button className="li-btn primary" onClick={startConversation} type="button">
-            New chat
+            {t('messages.newChat')}
           </button>
         </div>
         <div className="li-msg-list">
@@ -183,28 +203,28 @@ export function MessagesPage() {
               <span className="li-msg-list-empty-ic" aria-hidden>
                 <PlaceholderChatIcon />
               </span>
-              <p className="li-msg-list-empty-title">No conversations yet</p>
-              <p className="li-msg-list-empty-hint">Choose an accepted connection above to start your first chat.</p>
+              <p className="li-msg-list-empty-title">{t('messages.emptyListTitle')}</p>
+              <p className="li-msg-list-empty-hint">{t('messages.emptyListHint')}</p>
             </div>
           ) : (
             convos.map((c) => {
               const otherId = c.user1Id === me ? c.user2Id : c.user1Id
-              const label = names[otherId] ?? `Conversation #${c.id}`
+              const label = names[otherId] ?? t('messages.unnamedMember')
               return (
-                <button
-                  key={c.id}
-                  className={`li-msg-convo-btn ${c.id === activeId ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveId(c.id)}
-                >
-                  <span className="li-msg-avatar" aria-hidden>
-                    {initialsFromName(label)}
-                  </span>
-                  <span className="li-msg-convo-text">
-                    <span className="li-msg-convo-name">{label}</span>
-                    <span className="li-msg-convo-sub">Direct message</span>
-                  </span>
-                </button>
+                <div key={c.id} className={`li-msg-convo-row ${c.id === activeId ? 'active' : ''}`}>
+                  <button className="li-msg-convo-btn" type="button" onClick={() => setActiveId(c.id)}>
+                    <span className="li-msg-avatar" aria-hidden>
+                      {initialsFromName(label)}
+                    </span>
+                    <span className="li-msg-convo-text">
+                      <span className="li-msg-convo-name">{label}</span>
+                      <span className="li-msg-convo-sub">{t('messages.directSubtitle')}</span>
+                    </span>
+                  </button>
+                  <Link className="li-msg-convo-profile" to={`/people/${otherId}`} title={t('member.viewProfile')}>
+                    ↗
+                  </Link>
+                </div>
               )
             })
           )}
@@ -223,9 +243,17 @@ export function MessagesPage() {
             </span>
           )}
           <div className="li-msg-thread-heading">
-            <div className="li-msg-thread-title">{activeName}</div>
+            <div className="li-msg-thread-title">
+              {activeId > 0 && activeOtherUserId ? (
+                <Link className="li-msg-thread-title-link" to={`/people/${activeOtherUserId}`}>
+                  {activeName}
+                </Link>
+              ) : (
+                activeName
+              )}
+            </div>
             <div className="li-msg-thread-sub">
-              {activeId > 0 ? 'Active conversation' : 'Choose someone from the list to open messages'}
+              {activeId > 0 ? t('messages.threadActiveSub') : t('messages.threadIdleSub')}
             </div>
           </div>
         </div>
@@ -237,8 +265,8 @@ export function MessagesPage() {
               <div className="li-msg-emptyplate-iconwrap">
                 <PlaceholderChatIcon />
               </div>
-              <h5 className="li-msg-emptyplate-title">Your messages live here</h5>
-              <p className="li-msg-emptyplate-text">Pick a conversation on the left, or start a new one from your connections.</p>
+              <h5 className="li-msg-emptyplate-title">{t('messages.threadIdleTitle')}</h5>
+              <p className="li-msg-emptyplate-text">{t('messages.emptyPlateHint')}</p>
             </div>
           ) : null}
           {activeId > 0 && messages.length === 0 ? (
@@ -246,8 +274,8 @@ export function MessagesPage() {
               <div className="li-msg-emptyplate-iconwrap li-msg-emptyplate-iconwrap--sm">
                 <PlaceholderChatIcon />
               </div>
-              <h5 className="li-msg-emptyplate-title">No messages yet</h5>
-              <p className="li-msg-emptyplate-text">Send a short hello below to open the thread.</p>
+              <h5 className="li-msg-emptyplate-title">{t('messages.threadEmptyTitle')}</h5>
+              <p className="li-msg-emptyplate-text">{t('messages.threadEmptyHint')}</p>
             </div>
           ) : null}
           {messages.map((m) => {
@@ -267,7 +295,7 @@ export function MessagesPage() {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={activeId > 0 ? 'Write a message…' : 'Select a chat to type…'}
+            placeholder={activeId > 0 ? t('messages.composerPlaceholder') : t('messages.composerDisabled')}
             rows={2}
             disabled={activeId === 0}
             onKeyDown={(e) => {
@@ -283,7 +311,7 @@ export function MessagesPage() {
             type="button"
             disabled={activeId === 0 || !text.trim()}
           >
-            Send
+            {t('messages.send')}
           </button>
         </div>
       </div>
@@ -301,12 +329,12 @@ export function MessagesPage() {
                 />
               </svg>
             </span>
-            <h4>Messaging tips</h4>
+            <h4>{t('messages.tipsTitle')}</h4>
           </div>
           <ul className="li-msg-tips">
-            <li>Start chats only with connections you have accepted.</li>
-            <li>Keep messages clear and short; follow up in a friendly tone.</li>
-            <li>Use Enter to send, Shift+Enter for a new line.</li>
+            <li>{t('messages.tip1')}</li>
+            <li>{t('messages.tip2')}</li>
+            <li>{t('messages.tip3')}</li>
           </ul>
         </div>
       </aside>

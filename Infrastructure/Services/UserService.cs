@@ -6,6 +6,22 @@ using Infrastructure.Responses;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+public static class UserMappings
+{
+    public static UserResponseDto ToResponseDto(this User user) =>
+        new()
+        {
+            Id = user.Id,
+            Email = user.Email,
+            UserName = user.UserName,
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            EmailConfirmed = user.EmailConfirmed,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt,
+        };
+}
+
 public class UserService : IUserService
 {
     private readonly ApplicationDbContext context;
@@ -15,6 +31,14 @@ public class UserService : IUserService
     {
         context = dbContext;
         this.userManager = userManager;
+    }
+
+    private static string PickPrimaryRole(IList<string> roles)
+    {
+        if (roles.Contains("Organization")) return "Organization";
+        if (roles.Contains("Admin")) return "Admin";
+        if (roles.Contains("Candidate")) return "Candidate";
+        return roles.Count > 0 ? roles[0]! : "Candidate";
     }
 
     public async Task<Response<string>> CreateAsync(CreateUserDto dto)
@@ -39,21 +63,31 @@ public class UserService : IUserService
         return new Response<string>(HttpStatusCode.OK, "User created successfully");
     }
 
-    public async Task<Response<User>> GetByIdAsync(int id)
+    public async Task<Response<UserResponseDto>> GetByIdAsync(int id)
     {
         var user = await userManager.FindByIdAsync(id.ToString());
         if (user == null)
-            return new Response<User>(HttpStatusCode.NotFound, "User not found");
-        return new Response<User>(HttpStatusCode.OK, "ok", user);
+            return new Response<UserResponseDto>(HttpStatusCode.NotFound, "User not found");
+        var dto = user.ToResponseDto();
+        dto.AccountRole = PickPrimaryRole(await userManager.GetRolesAsync(user));
+        return new Response<UserResponseDto>(HttpStatusCode.OK, "ok", dto);
     }
 
-    public async Task<Response<List<User>>> GetAllAsync()
+    public async Task<Response<List<UserResponseDto>>> GetAllAsync()
     {
-        var list = await userManager.Users.ToListAsync();
-        return new Response<List<User>>(HttpStatusCode.OK, "ok", list);
+        var users = await userManager.Users.ToListAsync();
+        var list = new List<UserResponseDto>(users.Count);
+        foreach (var u in users)
+        {
+            var dto = u.ToResponseDto();
+            dto.AccountRole = PickPrimaryRole(await userManager.GetRolesAsync(u));
+            list.Add(dto);
+        }
+
+        return new Response<List<UserResponseDto>>(HttpStatusCode.OK, "ok", list);
     }
 
-    public async Task<PagedResult<User>> GetPagedAsync(UserFilter filter, PagedQuery querypage)
+    public async Task<PagedResult<UserResponseDto>> GetPagedAsync(UserFilter filter, PagedQuery querypage)
     {
         var query = userManager.Users.AsQueryable();
         if (!string.IsNullOrEmpty(filter.Name))
@@ -64,9 +98,16 @@ public class UserService : IUserService
         var total = await query.CountAsync();
         var page = querypage.PageNumber > 0 ? querypage.PageNumber : 1;
         var pageSize = querypage.PageSize > 0 ? querypage.PageSize : 10;
-        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var pageUsers = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var items = new List<UserResponseDto>(pageUsers.Count);
+        foreach (var u in pageUsers)
+        {
+            var dto = u.ToResponseDto();
+            dto.AccountRole = PickPrimaryRole(await userManager.GetRolesAsync(u));
+            items.Add(dto);
+        }
 
-        return new PagedResult<User>
+        return new PagedResult<UserResponseDto>
         {
             Items = items,
             Page = page,
@@ -99,12 +140,41 @@ public class UserService : IUserService
         return new Response<string>(HttpStatusCode.OK, "Deleted User successfully");
     }
 
-    public async Task<Response<User>> GetByEmailAsync(string email)
+    public async Task<Response<UserResponseDto>> GetByEmailAsync(string email)
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user == null)
-            return new Response<User>(HttpStatusCode.NotFound, "User not found");
-        return new Response<User>(HttpStatusCode.OK, "ok", user);
+            return new Response<UserResponseDto>(HttpStatusCode.NotFound, "User not found");
+        var dto = user.ToResponseDto();
+        dto.AccountRole = PickPrimaryRole(await userManager.GetRolesAsync(user));
+        return new Response<UserResponseDto>(HttpStatusCode.OK, "ok", dto);
+    }
+
+    public async Task<Response<List<MemberDirectoryEntryDto>>> GetMemberDirectoryAsync(int? excludeUserId)
+    {
+        var users = await userManager.Users.AsNoTracking().ToListAsync();
+        var list = new List<MemberDirectoryEntryDto>();
+        foreach (var u in users)
+        {
+            if (excludeUserId is { } x && u.Id == x) continue;
+            var roles = await userManager.GetRolesAsync(u);
+            var fn = string.IsNullOrWhiteSpace(u.FullName) ? null : u.FullName;
+            list.Add(
+                new MemberDirectoryEntryDto
+                {
+                    Id = u.Id,
+                    FullName = fn,
+                    UserName = u.UserName,
+                    Email = u.Email,
+                    Role = PickPrimaryRole(roles),
+                });
+        }
+
+        static string SortKey(MemberDirectoryEntryDto e) =>
+            e.FullName ?? e.UserName ?? e.Email ?? "";
+
+        list.Sort((a, b) => string.Compare(SortKey(a), SortKey(b), StringComparison.OrdinalIgnoreCase));
+        return new Response<List<MemberDirectoryEntryDto>>(HttpStatusCode.OK, "ok", list);
     }
 
     public async Task<Response<string>> ChangeRoleAsync(int id, UserRole role)

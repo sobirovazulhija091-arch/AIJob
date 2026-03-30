@@ -298,6 +298,17 @@ html[data-theme='dark'] .li-recruit-card:hover {
   color: var(--li-text);
 }
 
+a.li-recruit-name-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.li-recruit-name-link:hover {
+  color: var(--li-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .li-recruit-meta {
   margin: 4px 0 0;
   font-size: 12px;

@@ -242,9 +242,8 @@ using (var scope = app.Services.CreateScope())
             await userManager.AddToRoleAsync(user, role);
     }
 
-    await EnsureUser("admin@example.com", "Admin User", "+0000000000", "Admin123!", "Admin");
-    await EnsureUser("candidate@example.com", "Test Candidate", "+1111111111", "Candidate123!", "Candidate");
-    await EnsureUser("organization@example.com", "Test Organization", "+2222222222", "Organization123!", "Organization");
+    foreach (var a in Infrastructure.DevSeedCredentials.Accounts)
+        await EnsureUser(a.Email, a.FullName, a.Phone, a.Password, a.Role);
 }
 
 if (app.Environment.IsDevelopment())

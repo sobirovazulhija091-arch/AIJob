@@ -49,6 +49,32 @@ export async function register(payload: {
   return (await res.json()) as AuthResponse
 }
 
+export async function forgotPassword(email: string): Promise<void> {
+  const res = await fetch(`/api/Auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+}
+
+export async function resetPasswordWithToken(payload: {
+  email: string
+  token: string
+  newPassword: string
+}): Promise<void> {
+  const res = await fetch(`/api/Auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: payload.email,
+      token: payload.token,
+      newPassword: payload.newPassword,
+    }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+}
+
 export type Job = {
   id: number
   title: string
@@ -148,6 +174,21 @@ export async function updateMySettings(payload: UserSettings): Promise<void> {
 
 export type UserProfile = { id: number; userId: number; firstName: string; lastName: string; aboutMe: string; experienceYears: number; expectedSalary: number; cvFileUrl?: string }
 export type UserPublicProfile = { userId: number; fullName: string; firstName: string; lastName: string }
+
+export type MemberProfile = {
+  userId: number
+  firstName: string
+  lastName: string
+  fullName: string
+  aboutMe: string
+  experienceYears: number
+}
+export async function getMemberProfile(userId: number): Promise<MemberProfile | null> {
+  const res = await authedFetch(`/api/UserProfile/member/${userId}`, { method: 'GET' })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<MemberProfile>).data ?? null
+}
 export async function getProfileByUser(userId: number): Promise<UserProfile | null> {
   const res = await authedFetch(`/api/UserProfile/by-user/${userId}`, { method: 'GET' })
   if (res.status === 404) return null
@@ -202,6 +243,42 @@ export type AdminUserRow = {
   email?: string | null
   userName?: string | null
   fullName?: string | null
+  accountRole?: string | null
+}
+
+export type MemberDirectoryEntry = {
+  id: number
+  fullName?: string | null
+  userName?: string | null
+  email?: string | null
+  role: string
+}
+
+export async function getMemberDirectory(): Promise<MemberDirectoryEntry[]> {
+  const res = await authedFetch(`/api/User/directory`, { method: 'GET' })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<MemberDirectoryEntry[]>).data ?? []
+}
+
+export type OrganizationRow = {
+  id: number
+  name: string
+  description?: string | null
+  type: string
+  location?: string | null
+}
+
+export async function getOrganizations(): Promise<OrganizationRow[]> {
+  const res = await authedFetch(`/api/Organization`, { method: 'GET' })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<OrganizationRow[]>).data ?? []
+}
+
+export async function getOrganization(id: number): Promise<OrganizationRow | null> {
+  const res = await authedFetch(`/api/Organization/${id}`, { method: 'GET' })
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<OrganizationRow>).data ?? null
 }
 
 export async function getUsersAdmin(): Promise<AdminUserRow[]> {
@@ -219,6 +296,32 @@ export async function getFeed(): Promise<Post[]> {
 export async function createPost(content: string): Promise<void> {
   const res = await authedFetch(`/api/Post`, { method: 'POST', body: JSON.stringify({ content }) })
   if (!res.ok) throw new Error(await readApiError(res))
+}
+
+export type PostComment = {
+  id: number
+  postId: number
+  userId: number
+  content: string
+  createdAt: string
+}
+
+export async function getPostComments(postId: number): Promise<PostComment[]> {
+  const res = await authedFetch(`/api/Post/${postId}/comments`, { method: 'GET' })
+  if (!res.ok) throw new Error(await readApiError(res))
+  return ((await res.json()) as Response<PostComment[]>).data ?? []
+}
+
+export async function addPostComment(postId: number, content: string): Promise<PostComment> {
+  const res = await authedFetch(`/api/Post/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok) throw new Error(await readApiError(res))
+  const body = (await res.json()) as Response<PostComment>
+  const row = body.data
+  if (!row) throw new Error('No comment returned')
+  return row
 }
 
 export async function askAi(prompt: string): Promise<string> {

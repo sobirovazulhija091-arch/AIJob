@@ -299,6 +299,80 @@
   color: rgba(17, 17, 17, 0.85);
 }
 
+.link--accent {
+  color: #0a66c2;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link--accent:hover {
+  color: #1d4ed8;
+}
+
+.auth-back {
+  border: 0;
+  background: transparent;
+  padding: 0 0 14px;
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0a66c2;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.auth-back:hover {
+  text-decoration: underline;
+}
+
+.auth-info {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.auth-forgot-divider {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(17, 17, 17, 0.45);
+}
+
+.auth-token-area {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  font-size: 13px;
+  font-family: ui-monospace, monospace;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.auth-muted {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(17, 17, 17, 0.5);
+}
+
+.cta--secondary {
+  background: linear-gradient(135deg, #64748b, #475569);
+  box-shadow: 0 4px 14px rgba(71, 85, 105, 0.28);
+}
+
+.cta--secondary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
 @media (max-width: 720px) {
   .auth-card {
     padding: 22px 20px 24px;

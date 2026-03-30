@@ -62,4 +62,12 @@ public class UserProfileController : ControllerBase
     {
         return await _userProfileService.GetPublicProfilesByUserIdsAsync(userIds);
     }
+
+    /// <summary>LinkedIn-style member view: about + experience (no salary/CV).</summary>
+    [HttpGet("member/{userId:int}")]
+    [Authorize]
+    public async Task<Response<MemberProfileDto>> GetMemberProfile(int userId)
+    {
+        return await _userProfileService.GetMemberProfileAsync(userId);
+    }
 }

@@ -88,6 +88,7 @@ export function Shell() {
                 {showApplications ? <NavLink to="/applications">{t('nav.applications')}</NavLink> : null}
                 {showRecruiting ? <NavLink to="/recruiting">{t('nav.recruiting')}</NavLink> : null}
                 <NavLink to="/connections">{t('nav.connections')}</NavLink>
+                <NavLink to="/directory">{t('nav.directory')}</NavLink>
                 <NavLink to="/messages">{t('nav.messages')}</NavLink>
                 <NavLink to="/notifications">{t('nav.notifications')}</NavLink>
                 <NavLink to="/ai">{t('nav.ai')}</NavLink>

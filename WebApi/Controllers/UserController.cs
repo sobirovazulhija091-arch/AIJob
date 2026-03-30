@@ -25,6 +25,16 @@ public class UserController : ControllerBase
         return Ok(new { userId, email });
     }
 
+    /// <summary>Minimal user rows for member directory (any authenticated user).</summary>
+    [HttpGet("directory")]
+    [Authorize]
+    public async Task<Response<List<MemberDirectoryEntryDto>>> GetDirectoryAsync()
+    {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        int? excludeUserId = int.TryParse(idClaim, out var uid) ? uid : null;
+        return await _userService.GetMemberDirectoryAsync(excludeUserId);
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<Response<string>> AddAsync(CreateUserDto dto)
@@ -34,21 +44,21 @@ public class UserController : ControllerBase
 
     [HttpGet("{id}")]
     [Authorize(Roles = "Admin")]
-    public async Task<Response<User>> GetByIdAsync(int id)
+    public async Task<Response<UserResponseDto>> GetByIdAsync(int id)
     {
         return await _userService.GetByIdAsync(id);
     }
 
     [HttpGet]
     [Authorize(Roles = "Admin")]
-    public async Task<Response<List<User>>> GetAllAsync()
+    public async Task<Response<List<UserResponseDto>>> GetAllAsync()
     {
         return await _userService.GetAllAsync();
     }
 
     [HttpGet("paged")]
     [Authorize(Roles = "Admin")]
-    public async Task<PagedResult<User>> GetPagedAsync([FromQuery] UserFilter filter, [FromQuery] PagedQuery querypage)
+    public async Task<PagedResult<UserResponseDto>> GetPagedAsync([FromQuery] UserFilter filter, [FromQuery] PagedQuery querypage)
     {
         return await _userService.GetPagedAsync(filter, querypage);
     }
@@ -69,7 +79,7 @@ public class UserController : ControllerBase
 
     [HttpGet("by-email")]
     [Authorize(Roles = "Admin")]
-    public async Task<Response<User>> GetByEmailAsync([FromQuery] string email)
+    public async Task<Response<UserResponseDto>> GetByEmailAsync([FromQuery] string email)
     {
         return await _userService.GetByEmailAsync(email);
     }
