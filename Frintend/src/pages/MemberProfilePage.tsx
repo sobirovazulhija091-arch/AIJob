@@ -62,12 +62,23 @@ export function MemberProfilePage() {
         {profile === undefined ? (
           <div className="li-member-loading">Loading…</div>
         ) : profile === null ? (
-          <div className="li-member-empty">
+          <div className="li-member-empty li-member-empty--enhanced">
+            <div className="li-member-empty-avatar" aria-hidden>
+              {initialsFromLabel(`U${targetId}`)}
+            </div>
             <h2 className="li-page-title">{t('member.notFound')}</h2>
-            <p className="li-page-sub">User ID: {targetId}</p>
-            <Link className="li-btn" to="/connections">
-              Back to network
-            </Link>
+            <p className="li-member-empty-lead">{t('member.emptyProfileLead')}</p>
+            <p className="li-member-empty-id">
+              {t('member.userIdLabel')}: {targetId}
+            </p>
+            <div className="li-member-empty-actions">
+              <Link className="li-btn primary" to={`/messages?with=${targetId}`}>
+                {t('member.sendMessage')}
+              </Link>
+              <Link className="li-btn li-btn--outline" to="/connections">
+                {t('member.backToNetwork')}
+              </Link>
+            </div>
           </div>
         ) : (
           <>
@@ -116,10 +127,10 @@ export function MemberProfilePage() {
       </section>
 
       <aside className="li-panel">
-        <h4 className="li-side-title">{t('nav.profile')}</h4>
-        <p className="li-side-text">Salary and CV stay private and are not shown on member profiles.</p>
-        <Link className="li-btn primary" to="/profile" style={{ marginTop: 12, display: 'inline-flex' }}>
-          {t('member.editYours')}
+        <h4 className="li-side-title">{t('member.connectAsideTitle')}</h4>
+        <p className="li-side-text">{t('member.connectAsideHint')}</p>
+        <Link className="li-btn primary" to={`/messages?with=${targetId}`} style={{ marginTop: 12, display: 'inline-flex' }}>
+          {t('member.sendMessage')}
         </Link>
       </aside>
     </div>

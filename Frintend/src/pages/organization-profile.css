@@ -1,0 +1,116 @@
+/* Organization public profile */
+
+.li-org-profile-card {
+  position: relative;
+  border-radius: 18px;
+  border: 1px solid var(--li-line);
+  background: var(--li-card);
+  box-shadow: var(--li-shadow);
+  overflow: hidden;
+}
+
+.li-org-profile-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 28px;
+  align-items: flex-start;
+  padding: clamp(22px, 3vw, 32px) clamp(20px, 3vw, 32px) clamp(18px, 2.5vw, 26px);
+  border-bottom: 1px solid var(--li-line);
+  background: linear-gradient(165deg, rgba(10, 102, 194, 0.07) 0%, var(--li-card) 55%, var(--li-field) 100%);
+}
+
+html[data-theme='dark'] .li-org-profile-hero {
+  background: linear-gradient(165deg, rgba(59, 130, 246, 0.12) 0%, var(--li-card) 50%, var(--li-card) 100%);
+}
+
+.li-org-profile-hero-text {
+  flex: 1;
+  min-width: min(100%, 240px);
+}
+
+.li-org-profile-back {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.li-org-profile-back a {
+  color: var(--li-blue, #0a66c2);
+  text-decoration: none;
+}
+
+.li-org-profile-back a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.li-org-profile-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--li-text);
+}
+
+.li-org-profile-body {
+  padding: clamp(20px, 3vw, 28px) clamp(20px, 3vw, 32px) clamp(24px, 3vw, 32px);
+}
+
+.li-org-profile-dl {
+  margin: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.li-org-profile-dl > div {
+  margin: 0;
+}
+
+.li-org-profile-dt {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--li-muted);
+}
+
+.li-org-profile-dd {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--li-text);
+  font-weight: 650;
+}
+
+.li-org-profile-dd--about {
+  font-weight: 500;
+  color: var(--li-muted);
+  white-space: pre-wrap;
+}
+
+.li-org-profile-dd--empty {
+  font-style: italic;
+  color: var(--li-muted);
+  opacity: 0.92;
+}
+
+.li-org-profile-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.li-org-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--li-field);
+  border: 1px solid var(--li-line);
+  color: var(--li-text);
+}

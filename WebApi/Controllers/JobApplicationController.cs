@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Claims;
 using Domain.DTOs;
 using Domain.Filters;
 using Infrastructure.Responses;
@@ -29,13 +31,6 @@ public class JobApplicationController : ControllerBase
         return await _jobApplicationService.GetByIdAsync(id);
     }
 
-    [HttpGet]
-    [Authorize(Roles = "Admin")]
-    public async Task<Response<List<JobApplication>>> GetAllAsync()
-    {
-        return await _jobApplicationService.GetAllAsync();
-    }
-
     [HttpGet("paged")]
     [Authorize]
     public async Task<PagedResult<JobApplication>> GetPagedAsync([FromQuery] JobApplicationFilter filter, [FromQuery] PagedQuery querypage)
@@ -44,14 +39,14 @@ public class JobApplicationController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateJobApplicationDto dto)
     {
         return await _jobApplicationService.UpdateAsync(id, dto);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Candidate,Organization,Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _jobApplicationService.DeleteAsync(id);
@@ -65,16 +60,22 @@ public class JobApplicationController : ControllerBase
     }
 
     [HttpGet("by-job/{jobId}")]
-    [Authorize]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<List<JobApplication>>> GetByJobIdAsync(int jobId)
     {
-        return await _jobApplicationService.GetByJobIdAsync(jobId);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<List<JobApplication>>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobApplicationService.GetByJobIdAsync(jobId, userId);
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> ChangeStatusAsync(int id, [FromBody] ApplicationStatus status)
     {
-        return await _jobApplicationService.ChangeStatusAsync(id, status);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobApplicationService.ChangeStatusAsync(id, status, userId);
     }
 }

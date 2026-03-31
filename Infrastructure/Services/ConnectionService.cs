@@ -43,6 +43,7 @@ public class ConnectionService(ApplicationDbContext dbContext, INotificationServ
                 Type = NotificationType.ConnectionRequest,
                 Title = "Connection request",
                 Message = "Someone wants to connect with you on CareerHub.",
+                RelatedId = connection.Id,
             });
         }
         catch

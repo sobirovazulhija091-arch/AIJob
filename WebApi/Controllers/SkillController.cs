@@ -15,7 +15,7 @@ public class SkillController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> AddAsync(CreateSkillDto dto)
     {
         return await _skillService.CreateAsync(dto);
@@ -36,14 +36,14 @@ public class SkillController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateSkillResponseDto dto)
     {
         return await _skillService.UpdateAsync(id, dto);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _skillService.DeleteAsync(id);

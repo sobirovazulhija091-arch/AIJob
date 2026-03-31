@@ -15,7 +15,7 @@ public class LanguageController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> AddAsync(CreateLanguageDto dto)
     {
         return await _languageService.CreateAsync(dto);
@@ -36,14 +36,14 @@ public class LanguageController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateLanguageDto dto)
     {
         return await _languageService.UpdateAsync(id, dto);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _languageService.DeleteAsync(id);

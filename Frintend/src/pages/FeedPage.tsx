@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   addPostComment,
   createPost,
+  deletePost,
   getFeed,
   getPostComments,
   getPublicProfilesByUsers,
   type Post,
   type PostComment,
 } from '../lib/api'
-import { getDisplayName, getEmail, getUserId, initialsFromLabel } from '../lib/auth'
+import { getEmail, getHeaderDisplayName, getUserId, initialsFromLabel } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
 import './feed.css'
 
@@ -32,6 +33,8 @@ function formatCommentTime(iso: string): string {
 
 export function FeedPage() {
   const { t, locale } = useI18n()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const focusPostId = searchParams.get('post')
   const [items, setItems] = useState<Post[]>([])
   const [text, setText] = useState('')
   const [names, setNames] = useState<Record<number, string>>({})
@@ -46,7 +49,7 @@ export function FeedPage() {
   const [commentBusy, setCommentBusy] = useState<Record<number, boolean>>({})
   const [commentError, setCommentError] = useState<Record<number, string>>({})
 
-  const meLabel = getDisplayName() ?? getEmail()?.split('@')[0] ?? 'You'
+  const meLabel = getHeaderDisplayName() ?? getEmail()?.split('@')[0] ?? 'You'
   const meInitials = initialsFromLabel(meLabel)
   const meId = getUserId()
 
@@ -68,7 +71,7 @@ export function FeedPage() {
     try {
       const posts = await getFeed()
       setItems(posts)
-      const ids = [...new Set(posts.map((p) => p.userId))]
+      const ids = [...new Set(posts.map((p) => p.userId))].filter((x) => Number.isFinite(x) && x > 0)
       if (ids.length) {
         const profiles = await getPublicProfilesByUsers(ids)
         setNames((prev) => {
@@ -92,6 +95,37 @@ export function FeedPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!focusPostId || loading) return
+    const id = parseInt(focusPostId, 10)
+    if (!Number.isFinite(id)) {
+      setSearchParams(
+        (p: URLSearchParams) => {
+          p.delete('post')
+          return p
+        },
+        { replace: true },
+      )
+      return
+    }
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(`li-feed-post-${id}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('li-feed-post--flash')
+        window.setTimeout(() => el.classList.remove('li-feed-post--flash'), 2200)
+      }
+      setSearchParams(
+        (p: URLSearchParams) => {
+          p.delete('post')
+          return p
+        },
+        { replace: true },
+      )
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [focusPostId, loading, items, setSearchParams])
+
   async function post() {
     if (!text.trim()) return
     setBusy(true)
@@ -104,6 +138,27 @@ export function FeedPage() {
       setError(e instanceof Error ? e.message : 'Failed to post.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function removePost(postId: number) {
+    if (!window.confirm(t('feed.deletePostConfirm'))) return
+    setError('')
+    try {
+      await deletePost(postId)
+      setOpenComments((o) => {
+        const next = { ...o }
+        delete next[postId]
+        return next
+      })
+      setCommentsByPost((c) => {
+        const next = { ...c }
+        delete next[postId]
+        return next
+      })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('feed.deletePostError'))
     }
   }
 
@@ -237,7 +292,7 @@ export function FeedPage() {
               const nComments = commentsByPost[p.id]?.length
               const commentsOpen = !!openComments[p.id]
               return (
-                <article key={p.id} className="li-feed-post">
+                <article id={`li-feed-post-${p.id}`} key={p.id} className="li-feed-post">
                   <div className="li-feed-post-header">
                     <div className="li-feed-avatar li-feed-avatar--sm" aria-hidden>
                       {initials}
@@ -253,20 +308,23 @@ export function FeedPage() {
                   </div>
                   <div className="li-feed-post-body">{p.content}</div>
                   <div className="li-feed-actions" aria-label="Post actions">
-                    <button type="button" className="li-feed-act li-feed-act--muted" disabled title="Coming soon">
-                      Like
-                    </button>
                     <button
                       type="button"
-                      className="li-feed-act li-feed-act--primary"
+                      className="li-feed-act li-feed-act--comments"
                       onClick={() => toggleComments(p.id)}
                     >
                       {commentsOpen ? t('feed.hideComments') : t('feed.showComments')}
                       {typeof nComments === 'number' ? ` · ${commentCountLabel(nComments)}` : ''}
                     </button>
-                    <button type="button" className="li-feed-act li-feed-act--muted" disabled title="Coming soon">
-                      Repost
-                    </button>
+                    {meId != null && p.userId === meId ? (
+                      <button
+                        type="button"
+                        className="li-feed-act li-feed-act--delete"
+                        onClick={() => void removePost(p.id)}
+                      >
+                        {t('feed.deletePost')}
+                      </button>
+                    ) : null}
                   </div>
                   {commentsOpen ? (
                     <div className="li-feed-comments">

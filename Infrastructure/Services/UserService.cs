@@ -36,7 +36,6 @@ public class UserService : IUserService
     private static string PickPrimaryRole(IList<string> roles)
     {
         if (roles.Contains("Organization")) return "Organization";
-        if (roles.Contains("Admin")) return "Admin";
         if (roles.Contains("Candidate")) return "Candidate";
         return roles.Count > 0 ? roles[0]! : "Candidate";
     }

@@ -9,8 +9,14 @@ public class JobService(ApplicationDbContext dbContext):IJobService
 {
     private readonly ApplicationDbContext context = dbContext;
 
-    public async Task<Response<string>> AddAsync(CreateJobDto dto)
+    private Task<bool> IsOrgMemberAsync(int userId, int organizationId) =>
+        context.OrganizationMembers.AnyAsync(m => m.UserId == userId && m.OrganizationId == organizationId);
+
+    public async Task<Response<string>> AddAsync(CreateJobDto dto, int actingUserId)
     {
+        if (!await IsOrgMemberAsync(actingUserId, dto.OrganizationId))
+            return new Response<string>(HttpStatusCode.Forbidden, "You are not a member of this organization");
+
        var  job = new Job
        {
            OrganizationId = dto.OrganizationId,
@@ -29,13 +35,15 @@ public class JobService(ApplicationDbContext dbContext):IJobService
        return new Response<string>(HttpStatusCode.OK,"Add Job  successfully");
     }
 
-    public async Task<Response<string>> DeleteAsync(int id)
+    public async Task<Response<string>> DeleteAsync(int id, int actingUserId)
     {
         var del = await context.Jobs.FindAsync(id);
         if (del == null)
         {
             return new Response<string>(HttpStatusCode.NotFound,"Job not found");
         }
+        if (!await IsOrgMemberAsync(actingUserId, del.OrganizationId))
+            return new Response<string>(HttpStatusCode.Forbidden, "You cannot delete this job");
         context.Jobs.Remove(del);
         await context.SaveChangesAsync();
         return new Response<string>(HttpStatusCode.OK,"Deleted Job successfully");
@@ -44,6 +52,19 @@ public class JobService(ApplicationDbContext dbContext):IJobService
     public async Task<Response<List<Job>>> GetAllAsync()
     {
        return new Response<List<Job>>(HttpStatusCode.OK,"ok", await context.Jobs.ToListAsync());
+    }
+
+    public async Task<Response<List<Job>>> GetForUserAsync(int actingUserId)
+    {
+        var orgIds = await context.OrganizationMembers
+            .Where(m => m.UserId == actingUserId)
+            .Select(m => m.OrganizationId)
+            .Distinct()
+            .ToListAsync();
+        if (orgIds.Count == 0)
+            return new Response<List<Job>>(HttpStatusCode.OK, "ok", []);
+        var jobs = await context.Jobs.Where(j => orgIds.Contains(j.OrganizationId)).ToListAsync();
+        return new Response<List<Job>>(HttpStatusCode.OK, "ok", jobs);
     }
 
     public async Task<Response<Job>> GetByIdAsync(int id)
@@ -140,13 +161,15 @@ public class JobService(ApplicationDbContext dbContext):IJobService
            : new Response<List<Job>>(HttpStatusCode.OK, "ok", job);
     }
 
-    public async Task<Response<string>> UpdateAsync(int id, UpdateJobDto dto)
+    public async Task<Response<string>> UpdateAsync(int id, UpdateJobDto dto, int actingUserId)
     {
         var update = await context.Jobs.FindAsync(id);
         if (update == null)
         {
             return new Response<string>(HttpStatusCode.NotFound,"Job not found");
         }
+        if (!await IsOrgMemberAsync(actingUserId, update.OrganizationId))
+            return new Response<string>(HttpStatusCode.Forbidden, "You cannot edit this job");
         update.Title = dto.Title;
         update.Description = dto.Description;
         update.SalaryMin = dto.SalaryMin;

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Claims;
 using Domain.DTOs;
 using Domain.Filters;
 using Infrastructure.Responses;
@@ -16,10 +18,23 @@ public class JobController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> AddAsync(CreateJobDto dto)
     {
-        return await _jobService.AddAsync(dto);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobService.AddAsync(dto, userId);
+    }
+
+    [HttpGet("mine")]
+    [Authorize(Roles = "Organization")]
+    public async Task<Response<List<Job>>> GetMineAsync()
+    {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<List<Job>>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobService.GetForUserAsync(userId);
     }
 
     [HttpGet("{id}")]
@@ -42,16 +57,22 @@ public class JobController : ControllerBase
          return await _jobService.GetPagedAsync(filter,querypage);
     }
     [HttpPut("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateJobDto dto)
     {
-        return await _jobService.UpdateAsync(id,dto);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobService.UpdateAsync(id, dto, userId);
     }
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
-        return await _jobService.DeleteAsync(id);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _jobService.DeleteAsync(id, userId);
     }
     [HttpGet("by-organization/{organizationId}")]
     [AllowAnonymous]

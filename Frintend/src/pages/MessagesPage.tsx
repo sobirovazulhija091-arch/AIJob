@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { NiceSelect } from '../components/NiceSelect'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   createConversation,
+  deleteConversation,
+  deleteMessage,
   getConversations,
   getMemberDirectory,
   getMessages,
@@ -14,6 +15,7 @@ import {
 } from '../lib/api'
 import { getUserId } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
+import { notifyNavAlertsChanged } from '../lib/navAlerts'
 import './messages.css'
 
 function PlaceholderChatIcon() {
@@ -42,14 +44,36 @@ function initialsFromName(name: string): string {
   return (p[0][0] + p[p.length - 1][0]).toUpperCase()
 }
 
-function formatMsgTime(m: Message): string {
+function formatBubbleTime(m: Message): string {
   const raw = m.createdAt ?? m.sentAt
   if (!raw) return ''
   try {
-    return new Date(raw).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+    return new Date(raw).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   } catch {
     return ''
   }
+}
+
+function formatConvoListTime(iso: string | null | undefined, t: (key: string) => string): string {
+  if (!iso) return ''
+  try {
+    const d = new Date(iso)
+    const now = new Date()
+    const sod = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+    const diffDays = Math.round((sod(now) - sod(d)) / 86400000)
+    if (diffDays === 0) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    if (diffDays === 1) return t('messages.yesterday')
+    if (diffDays > 0 && diffDays < 7) return d.toLocaleDateString(undefined, { weekday: 'short' })
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  } catch {
+    return ''
+  }
+}
+
+function truncatePreview(s: string, max: number): string {
+  const x = s.replace(/\s+/g, ' ').trim()
+  if (x.length <= max) return x
+  return `${x.slice(0, max)}…`
 }
 
 function directoryDisplayName(m: MemberDirectoryEntry): string {
@@ -61,13 +85,48 @@ function directoryDisplayName(m: MemberDirectoryEntry): string {
   return ''
 }
 
+function convoMatchesQuery(
+  c: Conversation,
+  me: number | null,
+  names: Record<number, string>,
+  q: string,
+): boolean {
+  if (!q.trim()) return true
+  if (me == null) return true
+  const needle = q.trim().toLowerCase()
+  const otherId = c.user1Id === me ? c.user2Id : c.user1Id
+  const name = (names[otherId] ?? '').toLowerCase()
+  const preview = (c.lastMessagePreview ?? '').toLowerCase()
+  return name.includes(needle) || preview.includes(needle)
+}
+
+function memberMatchesQuery(m: MemberDirectoryEntry, q: string): boolean {
+  if (!q.trim()) return false
+  const needle = q.trim().toLowerCase()
+  const label = directoryDisplayName(m).toLowerCase()
+  const email = (m.email ?? '').toLowerCase()
+  const un = (m.userName ?? '').toLowerCase()
+  return label.includes(needle) || email.includes(needle) || un.includes(needle)
+}
+
+const TIPS_PREF_KEY = 'aijob.messages.showTips'
+
 export function MessagesPage() {
   const { t } = useI18n()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const me = getUserId()
+  const [tipsOpen, setTipsOpen] = useState(() => {
+    try {
+      return localStorage.getItem(TIPS_PREF_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const [convos, setConvos] = useState<Conversation[]>([])
   const [directory, setDirectory] = useState<MemberDirectoryEntry[]>([])
   const [names, setNames] = useState<Record<number, string>>({})
-  const [startUserId, setStartUserId] = useState<number>(0)
+  const [sidebarQuery, setSidebarQuery] = useState('')
   const [activeId, setActiveId] = useState<number>(0)
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
@@ -78,21 +137,25 @@ export function MessagesPage() {
   const roleShort = (role: string) => {
     const r = role?.trim()
     if (r === 'Organization') return t('role.organization')
-    if (r === 'Admin') return t('role.platformTeam')
-    return t('role.candidate')
+    if (r === 'Candidate') return t('role.candidate')
+    return t('directory.memberFallback')
   }
 
-  const startChatOptions = useMemo(() => {
-    const opts = [{ value: '', label: t('messages.startPicker') }]
-    for (const m of directory) {
-      const labelBase = directoryDisplayName(m) || t('messages.unnamedMember')
-      opts.push({
-        value: String(m.id),
-        label: `${labelBase} — ${roleShort(m.role)}`,
-      })
-    }
-    return opts
-  }, [directory, t])
+  const sidebarQueryTrim = sidebarQuery.trim()
+
+  const filteredConvos = useMemo(() => {
+    if (!sidebarQueryTrim) return convos
+    return convos.filter((c) => convoMatchesQuery(c, me, names, sidebarQueryTrim))
+  }, [convos, me, names, sidebarQueryTrim])
+
+  const directoryMatches = useMemo(() => {
+    if (!sidebarQueryTrim || me == null) return []
+    const partnerIds = new Set(convos.map((c) => (c.user1Id === me ? c.user2Id : c.user1Id)))
+    return directory
+      .filter((m) => m.id !== me && memberMatchesQuery(m, sidebarQueryTrim))
+      .filter((m) => !partnerIds.has(m.id))
+      .slice(0, 30)
+  }, [convos, directory, me, sidebarQueryTrim])
 
   const active = useMemo(() => convos.find((c) => c.id === activeId), [convos, activeId])
   const activeOtherUserId = active ? (active.user1Id === me ? active.user2Id : active.user1Id) : 0
@@ -101,8 +164,8 @@ export function MessagesPage() {
     : t('messages.selectChat')
   const activeInitials = initialsFromName(activeName)
 
-  async function loadConvos() {
-    setError('')
+  async function loadConvos(opts?: { skipAutoPick?: boolean; silent?: boolean }) {
+    if (!opts?.silent) setError('')
     try {
       const cs = await getConversations()
       setConvos(cs)
@@ -111,9 +174,9 @@ export function MessagesPage() {
       const map: Record<number, string> = {}
       for (const p of profiles) map[p.userId] = p.fullName || `${p.firstName} ${p.lastName}`.trim() || `User ${p.userId}`
       setNames((prev) => ({ ...prev, ...map }))
-      if (!activeId && cs.length) setActiveId(cs[0].id)
+      if (!opts?.skipAutoPick && !activeId && cs.length) setActiveId(cs[0].id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('messages.error.loadConvos'))
+      if (!opts?.silent) setError(e instanceof Error ? e.message : t('messages.error.loadConvos'))
     }
   }
 
@@ -138,7 +201,10 @@ export function MessagesPage() {
       setMessages(await getMessages(id))
     } catch (e) {
       setError(e instanceof Error ? e.message : t('messages.error.loadMsgs'))
+      return
     }
+    await loadConvos({ skipAutoPick: true, silent: true })
+    notifyNavAlertsChanged()
   }
 
   useEffect(() => {
@@ -147,9 +213,57 @@ export function MessagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const tipsVisible = tipsOpen
+
+  function persistTipsPref(open: boolean) {
+    setTipsOpen(open)
+    try {
+      localStorage.setItem(TIPS_PREF_KEY, open ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    const raw = searchParams.get('with')
+    if (raw == null || raw === '') return
+    const withId = parseInt(raw, 10)
+    if (!Number.isFinite(withId) || withId <= 0 || (me != null && withId === me)) {
+      navigate('/messages', { replace: true })
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      setError('')
+      try {
+        const c = await createConversation(withId)
+        if (cancelled) return
+        await loadConvos({ skipAutoPick: true })
+        notifyNavAlertsChanged()
+        setActiveId(c.id)
+        navigate('/messages', { replace: true })
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : t('messages.error.start'))
+          navigate('/messages', { replace: true })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, me])
+
   useEffect(() => {
     if (activeId) void loadMessages(activeId)
   }, [activeId])
+
+  useEffect(() => {
+    if (!activeId || convos.some((c) => c.id === activeId)) return
+    const next = convos[0]?.id ?? 0
+    setActiveId(next)
+  }, [convos, activeId])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -167,38 +281,183 @@ export function MessagesPage() {
     }
   }
 
-  async function startConversation() {
-    if (!startUserId) return
+  async function removeMessage(m: Message) {
+    if (!activeId) return
+    if (!window.confirm(t('messages.deleteConfirm'))) return
     setError('')
     try {
-      const c = await createConversation(startUserId)
-      await loadConvos()
+      await deleteMessage(m.id)
+      await loadMessages(activeId)
+      await loadConvos({ skipAutoPick: true, silent: true })
+      notifyNavAlertsChanged()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('messages.error.delete'))
+    }
+  }
+
+  async function removeConversation() {
+    if (!activeId) return
+    if (!window.confirm(t('messages.deleteConversationConfirm'))) return
+    setError('')
+    try {
+      await deleteConversation(activeId)
+      setMessages([])
+      await loadConvos({ skipAutoPick: true })
+      notifyNavAlertsChanged()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('messages.error.deleteConversation'))
+    }
+  }
+
+  async function openOrStartChat(withUserId: number) {
+    if (me == null || withUserId === me) return
+    setError('')
+    setSidebarQuery('')
+    const existing = convos.find(
+      (c) =>
+        (c.user1Id === me && c.user2Id === withUserId) || (c.user2Id === me && c.user1Id === withUserId),
+    )
+    if (existing) {
+      setActiveId(existing.id)
+      return
+    }
+    try {
+      const c = await createConversation(withUserId)
+      await loadConvos({ skipAutoPick: true })
+      notifyNavAlertsChanged()
       setActiveId(c.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('messages.error.start'))
     }
   }
 
-  return (
-    <div className="li-msg-app">
-      <aside className="li-msg-sidebar">
-        <div className="li-msg-sidebar-head">
-          <h3>{t('nav.messages')}</h3>
-          <p>{t('messages.sidebarSub')}</p>
-        </div>
-        <div className="li-msg-start">
-          <NiceSelect
-            aria-label={t('messages.startPicker')}
-            value={startUserId ? String(startUserId) : ''}
-            onChange={(v) => setStartUserId(parseInt(v || '0', 10))}
-            options={startChatOptions}
-          />
-          <button className="li-btn primary" onClick={startConversation} type="button">
-            {t('messages.newChat')}
+  function renderConvoRows(list: Conversation[]) {
+    return list.map((c) => {
+      const otherId = me != null && c.user1Id === me ? c.user2Id : c.user1Id
+      const label = names[otherId] ?? t('messages.unnamedMember')
+      const unread = (c.unreadCount ?? 0) > 0
+      const previewRaw = c.lastMessagePreview?.trim()
+      const preview = previewRaw
+        ? truncatePreview(previewRaw, 52)
+        : t('messages.threadEmptyTitle')
+      return (
+        <div
+          key={c.id}
+          className={`li-msg-convo-row ${c.id === activeId ? 'active' : ''} ${unread ? 'unread' : ''}`}
+        >
+          <button className="li-msg-convo-btn" type="button" onClick={() => setActiveId(c.id)}>
+            <span className="li-msg-avatar" aria-hidden>
+              {initialsFromName(label)}
+            </span>
+            <span className="li-msg-convo-main">
+              <span className="li-msg-convo-top">
+                <span className="li-msg-convo-name">{label}</span>
+                <span className="li-msg-convo-time">{formatConvoListTime(c.lastMessageAt, t)}</span>
+              </span>
+              <span className="li-msg-convo-bottom">
+                <span className={`li-msg-convo-preview ${previewRaw ? '' : 'li-msg-convo-preview--muted'}`}>
+                  {preview}
+                </span>
+                {(c.unreadCount ?? 0) > 0 ? (
+                  <span className="li-msg-unread-badge" aria-label={t('nav.messages')}>
+                    {(c.unreadCount ?? 0) > 99 ? '99+' : c.unreadCount}
+                  </span>
+                ) : null}
+              </span>
+            </span>
           </button>
+          <Link className="li-msg-convo-profile" to={`/people/${otherId}`} title={t('member.viewProfile')}>
+            ↗
+          </Link>
+        </div>
+      )
+    })
+  }
+
+  return (
+    <div
+      className={`li-msg-app ${tipsVisible ? 'li-msg-app--with-tips' : 'li-msg-app--tips-collapsed'}`}
+    >
+      <aside className="li-msg-sidebar">
+        <div className="li-msg-sidebar-head li-msg-sidebar-head--compact">
+          <h3>{t('nav.messages')}</h3>
+        </div>
+        <div className="li-msg-search-wrap">
+          <label className="li-msg-search-label" htmlFor="li-msg-sidebar-search">
+            <span className="li-msg-search-ic" aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                />
+                <path d="M16 16l5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </span>
+            <input
+              id="li-msg-sidebar-search"
+              className="li-msg-search"
+              type="search"
+              autoComplete="off"
+              placeholder={t('messages.searchPlaceholder')}
+              value={sidebarQuery}
+              onChange={(e) => setSidebarQuery(e.target.value)}
+            />
+          </label>
         </div>
         <div className="li-msg-list">
-          {convos.length === 0 ? (
+          {sidebarQueryTrim ? (
+            <>
+              {filteredConvos.length > 0 ? (
+                <>
+                  {directoryMatches.length > 0 ? (
+                    <div className="li-msg-list-section">{t('messages.searchChats')}</div>
+                  ) : null}
+                  {renderConvoRows(filteredConvos)}
+                </>
+              ) : null}
+              {directoryMatches.length > 0 ? (
+                <>
+                  <div className="li-msg-list-section">{t('messages.searchPeople')}</div>
+                  {directoryMatches.map((m) => {
+                    const label = directoryDisplayName(m) || t('messages.unnamedMember')
+                    return (
+                      <div key={`dir-${m.id}`} className="li-msg-convo-row li-msg-convo-row--person">
+                        <button
+                          className="li-msg-convo-btn"
+                          type="button"
+                          onClick={() => void openOrStartChat(m.id)}
+                        >
+                          <span className="li-msg-avatar" aria-hidden>
+                            {initialsFromName(label)}
+                          </span>
+                          <span className="li-msg-convo-main">
+                            <span className="li-msg-convo-top">
+                              <span className="li-msg-convo-name">{label}</span>
+                              <span className="li-msg-person-role">{roleShort(m.role)}</span>
+                            </span>
+                            <span className="li-msg-convo-bottom">
+                              <span className="li-msg-convo-preview li-msg-convo-preview--muted">
+                                {t('messages.newChat')}
+                              </span>
+                            </span>
+                          </span>
+                        </button>
+                        <Link className="li-msg-convo-profile" to={`/people/${m.id}`} title={t('member.viewProfile')}>
+                          ↗
+                        </Link>
+                      </div>
+                    )
+                  })}
+                </>
+              ) : null}
+              {filteredConvos.length === 0 && directoryMatches.length === 0 ? (
+                <div className="li-msg-list-empty li-msg-list-empty--search">
+                  <p className="li-msg-list-empty-title">{t('messages.searchNoResults')}</p>
+                </div>
+              ) : null}
+            </>
+          ) : convos.length === 0 ? (
             <div className="li-msg-list-empty">
               <span className="li-msg-list-empty-ic" aria-hidden>
                 <PlaceholderChatIcon />
@@ -207,26 +466,7 @@ export function MessagesPage() {
               <p className="li-msg-list-empty-hint">{t('messages.emptyListHint')}</p>
             </div>
           ) : (
-            convos.map((c) => {
-              const otherId = c.user1Id === me ? c.user2Id : c.user1Id
-              const label = names[otherId] ?? t('messages.unnamedMember')
-              return (
-                <div key={c.id} className={`li-msg-convo-row ${c.id === activeId ? 'active' : ''}`}>
-                  <button className="li-msg-convo-btn" type="button" onClick={() => setActiveId(c.id)}>
-                    <span className="li-msg-avatar" aria-hidden>
-                      {initialsFromName(label)}
-                    </span>
-                    <span className="li-msg-convo-text">
-                      <span className="li-msg-convo-name">{label}</span>
-                      <span className="li-msg-convo-sub">{t('messages.directSubtitle')}</span>
-                    </span>
-                  </button>
-                  <Link className="li-msg-convo-profile" to={`/people/${otherId}`} title={t('member.viewProfile')}>
-                    ↗
-                  </Link>
-                </div>
-              )
-            })
+            renderConvoRows(convos)
           )}
         </div>
       </aside>
@@ -256,6 +496,11 @@ export function MessagesPage() {
               {activeId > 0 ? t('messages.threadActiveSub') : t('messages.threadIdleSub')}
             </div>
           </div>
+          {activeId > 0 ? (
+            <button type="button" className="li-msg-thread-del" onClick={() => void removeConversation()}>
+              {t('messages.deleteConversation')}
+            </button>
+          ) : null}
         </div>
         {error ? <div className="li-msg-err">{error}</div> : null}
         <div className="li-msg-chat-area" ref={chatAreaRef}>
@@ -280,11 +525,23 @@ export function MessagesPage() {
           ) : null}
           {messages.map((m) => {
             const mine = m.senderId === me
+            const bubbleTime = formatBubbleTime(m)
             return (
               <div key={m.id} className={`li-msg-row ${mine ? 'me' : ''}`}>
-                <div>
-                  <div className={`li-msg-bubble ${mine ? 'me' : 'them'}`}>{m.content}</div>
-                  {formatMsgTime(m) ? <div className="li-msg-time">{formatMsgTime(m)}</div> : null}
+                <div className={`li-msg-bubble-wrap ${mine ? 'me' : 'them'}`}>
+                  <div className={`li-msg-bubble ${mine ? 'me' : 'them'}`}>
+                    <span className="li-msg-bubble-text">{m.content}</span>
+                    {bubbleTime ? <span className="li-msg-bubble-meta">{bubbleTime}</span> : null}
+                    <button
+                      type="button"
+                      className="li-msg-bubble-del"
+                      title={t('messages.deleteMessage')}
+                      aria-label={t('messages.deleteMessage')}
+                      onClick={() => void removeMessage(m)}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               </div>
             )
@@ -316,28 +573,38 @@ export function MessagesPage() {
         </div>
       </div>
 
-      <aside className="li-msg-aside">
-        <div className="li-msg-aside-inner">
-          <div className="li-msg-aside-head">
-            <span className="li-msg-aside-badge" aria-hidden>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 16v-4M12 8h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
-            <h4>{t('messages.tipsTitle')}</h4>
+      {tipsVisible ? (
+        <aside className="li-msg-aside" aria-label={t('messages.tipsTitle')}>
+          <div className="li-msg-aside-inner">
+            <div className="li-msg-aside-head">
+              <span className="li-msg-aside-badge" aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 16v-4M12 8h.01M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10z"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              <h4>{t('messages.tipsTitle')}</h4>
+              <button
+                type="button"
+                className="li-msg-aside-close"
+                onClick={() => persistTipsPref(false)}
+                aria-label={t('messages.hideTips')}
+              >
+                ×
+              </button>
+            </div>
+            <ul className="li-msg-tips">
+              <li>{t('messages.tip1')}</li>
+              <li>{t('messages.tip2')}</li>
+              <li>{t('messages.tip3')}</li>
+            </ul>
           </div>
-          <ul className="li-msg-tips">
-            <li>{t('messages.tip1')}</li>
-            <li>{t('messages.tip2')}</li>
-            <li>{t('messages.tip3')}</li>
-          </ul>
-        </div>
-      </aside>
+        </aside>
+      ) : null}
     </div>
   )
 }

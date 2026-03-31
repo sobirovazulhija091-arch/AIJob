@@ -285,6 +285,37 @@ html[data-theme='dark'] .li-ai-tab[aria-selected='true'] {
   max-height: min(680px, 72vh);
 }
 
+/* Structured CV/job output: avoid pre-wrap collapsing blocks; keep panel readable */
+.li-ai-reply-body--cv-out {
+  white-space: normal;
+  min-height: min(280px, 40vh);
+}
+
+.li-ai-cv-panel-err {
+  padding: 8px 4px 16px;
+  max-width: 42ch;
+}
+
+.li-ai-cv-panel-err-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #991b1b;
+}
+
+html[data-theme='dark'] .li-ai-cv-panel-err-title {
+  color: #fecaca;
+}
+
+.li-ai-cv-panel-err-msg {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 600;
+  color: var(--li-text);
+  word-break: break-word;
+}
+
 .li-ai-empty-out {
   display: flex;
   flex-direction: column;
@@ -665,6 +696,17 @@ html[data-theme='dark'] .li-ai-reply-col {
   gap: 10px;
 }
 
+.li-ai-upload-row--split {
+  align-items: flex-start;
+  gap: 12px 16px;
+}
+
+.li-ai-upload-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .li-ai-file {
   position: absolute;
   width: 0;
@@ -692,6 +734,19 @@ html[data-theme='dark'] .li-ai-reply-col {
 
 .li-ai-file-label:hover {
   background: rgba(10, 102, 194, 0.1);
+  border-color: var(--li-blue);
+}
+
+.li-ai-file-label--primary {
+  border-style: solid;
+  background: var(--li-blue);
+  color: #fff;
+  border-color: var(--li-blue);
+}
+
+.li-ai-file-label--primary:hover {
+  filter: brightness(1.05);
+  background: var(--li-blue);
   border-color: var(--li-blue);
 }
 
@@ -790,6 +845,25 @@ html[data-theme='dark'] .li-ai-error {
 .li-ai-result-card:hover {
   border-color: rgba(10, 102, 194, 0.22);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.li-ai-result-card--accent {
+  border-left: 3px solid var(--li-blue);
+}
+
+.li-ai-resource-list {
+  word-break: break-word;
+}
+
+.li-ai-resource-link {
+  font-weight: 700;
+  color: var(--li-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.li-ai-resource-link:hover {
+  text-decoration-thickness: 2px;
 }
 
 .li-ai-result-title {

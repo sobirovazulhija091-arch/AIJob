@@ -19,20 +19,33 @@ public class ConversationController : ControllerBase
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost]
-    public async Task<Response<Conversation>> GetOrCreateAsync([FromBody] CreateConversationDto dto)
+    public async Task<Response<ConversationListItemDto>> GetOrCreateAsync([FromBody] CreateConversationDto dto)
     {
         return await _conversationService.GetOrCreateAsync(GetUserId(), dto.OtherUserId);
     }
 
     [HttpGet]
-    public async Task<Response<List<Conversation>>> GetMyConversationsAsync()
+    public async Task<Response<List<ConversationListItemDto>>> GetMyConversationsAsync()
     {
         return await _conversationService.GetByUserIdAsync(GetUserId());
     }
 
     [HttpGet("{id}")]
-    public async Task<Response<Conversation>> GetByIdAsync(int id)
+    public async Task<Response<ConversationListItemDto>> GetByIdAsync(int id)
     {
         return await _conversationService.GetByIdAsync(id, GetUserId());
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<Response<string>> DeleteAsync(int id)
+    {
+        return await _conversationService.DeleteAsync(id, GetUserId());
+    }
+
+    /** POST fallback — some proxies or clients mishandle DELETE; same authorization rules apply. */
+    [HttpPost("{id}/delete")]
+    public async Task<Response<string>> DeleteByPostAsync(int id)
+    {
+        return await _conversationService.DeleteAsync(id, GetUserId());
     }
 }

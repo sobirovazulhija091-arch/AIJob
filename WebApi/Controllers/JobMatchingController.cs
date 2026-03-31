@@ -28,7 +28,7 @@ public class JobMatchingController : ControllerBase
 
     /// <summary>Get applicants recommended for a job (for companies), sorted by match score.</summary>
     [HttpGet("recommended-applicants/{jobId}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<PagedResult<ApplicantWithMatchDto>> GetRecommendedApplicantsForJob(
         int jobId,
         [FromQuery] PagedQuery query)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createProfile, getProfileByUser, updateProfile, type UserProfile } from '../lib/api'
-import { getUserId } from '../lib/auth'
+import { getUserId, hasRole, setHeaderDisplayNameFromProfile } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
 
 function sanitizeExperienceInput(raw: string): string {
   return raw.replace(/\D/g, '').slice(0, 3)
@@ -28,6 +29,7 @@ function parseExpectedSalary(s: string): number {
 }
 
 export function ProfilePage() {
+  const { t } = useI18n()
   const userId = getUserId()
   const [model, setModel] = useState<UserProfile | null>(null)
   const [profileId, setProfileId] = useState<number>(0)
@@ -43,6 +45,7 @@ export function ProfilePage() {
       try {
         const p = await getProfileByUser(userId)
         if (p) {
+          setHeaderDisplayNameFromProfile(p.firstName, p.lastName)
           setModel(p)
           setProfileId(p.id)
           setExperienceStr(p.experienceYears > 0 ? String(p.experienceYears) : '')
@@ -82,11 +85,13 @@ export function ProfilePage() {
       }
       const fresh = await getProfileByUser(userId)
       if (fresh) {
+        setHeaderDisplayNameFromProfile(fresh.firstName, fresh.lastName)
         setProfileId(fresh.id)
         setModel(fresh)
         setExperienceStr(fresh.experienceYears > 0 ? String(fresh.experienceYears) : '')
         setSalaryStr(fresh.expectedSalary > 0 ? String(fresh.expectedSalary) : '')
       } else {
+        setHeaderDisplayNameFromProfile(payload.firstName, payload.lastName)
         setModel(payload)
         setExperienceStr(experienceYears > 0 ? String(experienceYears) : '')
         setSalaryStr(expectedSalary > 0 ? String(expectedSalary) : '')
@@ -161,6 +166,9 @@ export function ProfilePage() {
               <h3 id="profile-expectations" className="li-form-section-title">
                 Experience & expectations
               </h3>
+              {hasRole('Candidate') ? (
+                <p className="li-field-hint">{t('profile.candidateExpLead')}</p>
+              ) : null}
               <p className="li-field-hint">Rough numbers are fine; you can update these anytime.</p>
               <div className="li-grid-2">
                 <label className="li-stack">

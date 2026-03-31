@@ -29,22 +29,23 @@ public class AiCareerService(
         var prompt = $"""
 Return valid JSON only.
 Analyze this CV/resume text and extract:
-- fullName
-- firstName
-- lastName
+- fullName, firstName, lastName (split name when possible)
 - professionalSummary
-- experienceYears
-- skills (array)
+- experienceYears (integer; use 0 only if employment history is missing, unclear, or you cannot estimate from dates — do not guess years without evidence)
+- skills (array of short skill names)
 - education (array)
-- recommendedRoles (array)
-- notes (array)
+- recommendedRoles (array of concise job titles)
+- notes (array: brief quality observations, not duplicates of other fields)
+- missingOrWeakSections (array): factual gaps in the document. Examples: "No work experience or employers listed", "Employment dates missing — cannot verify years of experience", "No education section", "No skills or technologies mentioned", "Very short document — looks incomplete", "No measurable achievements or metrics". Be direct; say what is NOT there or too weak.
+- howToImprove (array): specific actions the candidate should take. Examples: "Add a reverse-chronological work history with company, role, dates, and 2–4 bullet achievements per role", "State total years of experience or list date ranges so employers can see tenure", "Add a skills section aligned to your target roles", "Quantify results (%, revenue, scale, timelines)".
+- helpfulResources (array): 4 to 6 strings in the format "Title — https://full-url" pointing to reputable free guidance (resume writing, examples, or career advice). Prefer well-known sites such as Indeed, LinkedIn, Coursera career articles, Novorésumé, or government/university career centres. Use real https URLs only.
 
 Rules:
-- Keep professionalSummary to 2-4 sentences.
-- skills should be short names only.
-- education should be concise.
-- If something is missing, return empty string or empty array.
-
+- Keep professionalSummary to 2–6 short paragraphs max (not 30 sentences).
+- skills: short names only.
+- Do not invent employers, degrees, or years not supported by the text. If experience is unclear, experienceYears should be 0 and missingOrWeakSections must explain that.
+- If something is missing, use empty string or empty array — never null.
+- Separate concerns: notes = quick observations; missingOrWeakSections = what's absent/weak; howToImprove = what to do next.
 CV TEXT:
 {trimmedText}
 """;
@@ -62,6 +63,9 @@ CV TEXT:
                 Education = NormalizeDistinct(aiJson.Education),
                 RecommendedRoles = NormalizeDistinct(aiJson.RecommendedRoles),
                 Notes = NormalizeDistinct(aiJson.Notes),
+                MissingOrWeakSections = NormalizeDistinct(aiJson.MissingOrWeakSections),
+                HowToImprove = NormalizeDistinct(aiJson.HowToImprove),
+                HelpfulResources = NormalizeDistinct(aiJson.HelpfulResources),
                 SourceTextPreview = TrimLength(trimmedText, 500)
             }
             : BuildFallbackCvAnalysis(trimmedText);
@@ -173,6 +177,10 @@ Rules:
 - Keep improvedDescription under 1800 characters.
 - Make it clear, professional, and practical.
 - Do not invent impossible requirements.
+- suggestedSkills should be concise skill names relevant to the job.
+- suggestedResponsibilities should be concise and specific.
+- suggestedBenefits should be concise and appealing.
+- If something is missing, return empty string or empty array.
 """;
 
         var aiJson = await AskForJsonAsync<AiJobImproveJsonDto>(prompt);
@@ -483,11 +491,33 @@ Keep it short, warm, and action-oriented.
     private static AiCvAnalysisResultDto BuildFallbackCvAnalysis(string cvText)
     {
         var preview = TrimLength(cvText, 500);
+        var weak = new List<string>();
+        if (string.IsNullOrWhiteSpace(cvText) || cvText.Length < 200)
+            weak.Add("The extracted text is very short — the file may be hard to read, or the CV is incomplete.");
+        if (!Regex.IsMatch(cvText, @"20\d{2}|19\d{2}"))
+            weak.Add("No clear years or date ranges detected — add employment and education dates.");
+        if (!cvText.Contains('@') && !Regex.IsMatch(cvText, @"\b(inc\.|ltd|llc|gmbh|company|corp)\b", RegexOptions.IgnoreCase))
+            weak.Add("No obvious employer or company names found — add a work history section with organization names.");
+
         return new AiCvAnalysisResultDto
         {
             ProfessionalSummary = string.IsNullOrWhiteSpace(preview) ? "CV text was extracted, but AI parsing was unavailable." : preview,
             Skills = DetectSkills(cvText),
             Notes = ["Fallback parsing was used because structured AI output was unavailable."],
+            MissingOrWeakSections = weak,
+            HowToImprove =
+            [
+                "Paste the full CV as plain text or upload a PDF/DOCX again if text extraction was poor.",
+                "Add reverse-chronological jobs with title, company, dates, and bullet achievements.",
+                "Include a skills section and at least one line on education or training.",
+            ],
+            HelpfulResources =
+            [
+                "Indeed — How to write a resume — https://www.indeed.com/career-advice/resumes-cover-letters/how-to-make-a-resume",
+                "Coursera — Resume writing tips — https://www.coursera.org/articles/how-to-write-a-resume",
+                "Novorésumé — Resume examples — https://novoresume.com/resume-examples",
+                "LinkedIn — Profile and resume tips — https://www.linkedin.com/business/talent/blog/product-tips/how-to-write-a-resume-guide",
+            ],
             SourceTextPreview = preview
         };
     }

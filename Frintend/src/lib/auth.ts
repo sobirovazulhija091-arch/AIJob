@@ -3,6 +3,15 @@ import { applyTheme, clearStoredTheme } from './theme'
 const TOKEN_KEY = 'aijob.token'
 const REFRESH_KEY = 'aijob.refresh'
 
+/** Dispatched when refresh token fails so the shell can send the user to sign-in. */
+export const SESSION_EXPIRED_EVENT = 'aijob:session-expired'
+
+/** Saved when Profile first/last name is loaded or saved; preferred over JWT `name` in the shell. */
+const HEADER_DISPLAY_KEY = 'aijob.header.displayName'
+
+/** Shell / feed listen to refresh the visible name without a full reload. */
+export const HEADER_DISPLAY_EVENT = 'aijob:header-display'
+
 export function setSession(token: string, refreshToken: string) {
   localStorage.setItem(TOKEN_KEY, token)
   localStorage.setItem(REFRESH_KEY, refreshToken)
@@ -13,6 +22,7 @@ export function clearSession() {
   localStorage.removeItem(REFRESH_KEY)
   try {
     localStorage.removeItem('aijob.locale')
+    localStorage.removeItem(HEADER_DISPLAY_KEY)
   } catch {
     // ignore
   }
@@ -22,6 +32,10 @@ export function clearSession() {
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY)
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_KEY)
 }
 
 export function isAuthed(): boolean {
@@ -69,6 +83,36 @@ export function getDisplayName(): string | null {
   return null
 }
 
+/** Name for header/feed composer: profile fields if set, otherwise JWT name. */
+export function getHeaderDisplayName(): string | null {
+  try {
+    const fromProfile = localStorage.getItem(HEADER_DISPLAY_KEY)?.trim()
+    if (fromProfile) return fromProfile
+  } catch {
+    /* ignore */
+  }
+  return getDisplayName()
+}
+
+/** Call after Profile load/save. Empty first+last clears override (JWT name shows again). */
+export function setHeaderDisplayNameFromProfile(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+) {
+  const s = `${firstName ?? ''} ${lastName ?? ''}`.trim()
+  try {
+    if (s) localStorage.setItem(HEADER_DISPLAY_KEY, s)
+    else localStorage.removeItem(HEADER_DISPLAY_KEY)
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.dispatchEvent(new Event(HEADER_DISPLAY_EVENT))
+  } catch {
+    /* ignore */
+  }
+}
+
 export function getEmail(): string | null {
   const json = decodePayload()
   if (!json) return null
@@ -82,7 +126,7 @@ function collectRoles(value: unknown, into: Set<string>) {
   if (Array.isArray(value)) value.forEach((x) => collectRoles(x, into))
 }
 
-/** Roles from JWT (Admin, Organization, Candidate). */
+/** Roles from JWT (Organization, Candidate). */
 export function getRoles(): string[] {
   const json = decodePayload()
   if (!json) return []

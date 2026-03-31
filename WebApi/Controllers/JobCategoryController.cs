@@ -15,7 +15,7 @@ public class JobCategoryController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> AddAsync(CreateJobCategoryDto dto)
     {
         return await _jobCategoryService.CreateAsync(dto);
@@ -36,14 +36,14 @@ public class JobCategoryController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateJobCategoryDto dto)
     {
         return await _jobCategoryService.UpdateAsync(id, dto);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _jobCategoryService.DeleteAsync(id);

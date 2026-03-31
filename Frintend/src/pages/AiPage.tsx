@@ -4,8 +4,10 @@ import {
   askAi,
   draftCoverLetter,
   getJobs,
+  getMyJobs,
   getSkillGap,
   improveJob,
+  uploadCvFile,
   type CvAnalysis,
   type DraftLetterResult,
   type Job,
@@ -116,6 +118,21 @@ function IconPlane() {
   )
 }
 
+function ResourceLine({ text }: { text: string }) {
+  const idx = text.search(/https?:\/\//)
+  if (idx < 0) return <>{text}</>
+  const before = text.slice(0, idx).replace(/\s*[—–-]\s*$/, '').trim()
+  const url = text.slice(idx).trim()
+  return (
+    <>
+      {before ? <>{before} — </> : null}
+      <a href={url} target="_blank" rel="noopener noreferrer" className="li-ai-resource-link">
+        {url}
+      </a>
+    </>
+  )
+}
+
 function IconReset() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -136,17 +153,20 @@ export function AiPage() {
   const coverJobLbl = useId()
   const improveJobLbl = useId()
   const fileRef = useRef<HTMLInputElement>(null)
+  const pdfRef = useRef<HTMLInputElement>(null)
 
-  const canImprove = hasRole('Organization') || hasRole('Admin')
+  const canImprove = hasRole('Organization')
 
   const [tab, setTab] = useState<AiTab>('ask')
   const [jobs, setJobs] = useState<Job[]>([])
+  const [myEmployerJobs, setMyEmployerJobs] = useState<Job[]>([])
 
   const [prompt, setPrompt] = useState('')
   const [answer, setAnswer] = useState('')
 
   const [cvText, setCvText] = useState('')
   const [cvFileName, setCvFileName] = useState('')
+  const [cvServerUrl, setCvServerUrl] = useState<string | null>(null)
   const [applyToProfile, setApplyToProfile] = useState(false)
   const [syncSkills, setSyncSkills] = useState(false)
   const [cvResult, setCvResult] = useState<CvAnalysis | null>(null)
@@ -172,12 +192,27 @@ export function AiPage() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!canImprove) return
+    void getMyJobs()
+      .then(setMyEmployerJobs)
+      .catch(() => setMyEmployerJobs([]))
+  }, [canImprove])
+
   const jobOptions = useMemo(
     () => [
       { value: '', label: t('recruiting.selectPlaceholder') },
       ...jobs.map((j) => ({ value: String(j.id), label: j.title })),
     ],
     [jobs, t],
+  )
+
+  const improveJobOptions = useMemo(
+    () => [
+      { value: '', label: t('recruiting.selectPlaceholder') },
+      ...myEmployerJobs.map((j) => ({ value: String(j.id), label: j.title })),
+    ],
+    [myEmployerJobs, t],
   )
 
   const navItems = useMemo(
@@ -214,11 +249,37 @@ export function AiPage() {
       const text = typeof reader.result === 'string' ? reader.result : ''
       setCvText(text)
       setCvFileName(f.name)
+      setCvServerUrl(null)
       setCvResult(null)
       setError('')
     }
     reader.onerror = () => setError(t('ai.cv.readError'))
     reader.readAsText(f)
+  }
+
+  async function onCvPdfChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    const byName = /\.(pdf|doc|docx)$/i.test(f.name)
+    if (!byName) {
+      setError(t('ai.cv.fileTypePdf'))
+      return
+    }
+    setError('')
+    setCvResult(null)
+    setBusy(true)
+    try {
+      const url = await uploadCvFile(f)
+      setCvServerUrl(url)
+      setCvText('')
+      setCvFileName(f.name)
+    } catch (err) {
+      setCvServerUrl(null)
+      setError(err instanceof Error ? err.message : t('ai.cv.uploadErr'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   function resetAsk() {
@@ -244,14 +305,16 @@ export function AiPage() {
     setError('')
     setCvResult(null)
     const trimmed = cvText.trim()
-    if (trimmed.length < MIN_CV_LEN) {
+    if (!cvServerUrl && trimmed.length < MIN_CV_LEN) {
       setError(t('ai.cv.minHint').replace('{n}', String(MIN_CV_LEN)))
       return
     }
     setBusy(true)
     try {
       setCvResult(
-        await analyzeCv(trimmed, {
+        await analyzeCv({
+          cvText: cvServerUrl ? undefined : trimmed,
+          cvFileUrl: cvServerUrl ?? undefined,
           applyToProfile,
           syncSkills,
         }),
@@ -335,6 +398,7 @@ export function AiPage() {
   }
 
   const cvLen = cvText.length
+  const cvMetaChars = cvServerUrl ? t('ai.cv.charsFile') : t('ai.cv.chars').replace('{n}', String(cvLen))
 
   function Thinking() {
     return (
@@ -435,6 +499,44 @@ export function AiPage() {
             <p className="li-ai-muted">{t('ai.result.emptySection')}</p>
           )}
         </div>
+        <div className="li-ai-result-card li-ai-result-card--accent">
+          <h4 className="li-ai-result-title">{t('ai.result.gaps')}</h4>
+          {r.missingOrWeakSections?.length ? (
+            <ul className="li-ai-list-plain">
+              {r.missingOrWeakSections.map((x, i) => (
+                <li key={`${i}-${x}`}>{x}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="li-ai-muted">{t('ai.result.emptySection')}</p>
+          )}
+        </div>
+        <div className="li-ai-result-card li-ai-result-card--accent">
+          <h4 className="li-ai-result-title">{t('ai.result.improve')}</h4>
+          {r.howToImprove?.length ? (
+            <ul className="li-ai-list-plain">
+              {r.howToImprove.map((x, i) => (
+                <li key={`${i}-${x}`}>{x}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="li-ai-muted">{t('ai.result.emptySection')}</p>
+          )}
+        </div>
+        <div className="li-ai-result-card">
+          <h4 className="li-ai-result-title">{t('ai.result.resources')}</h4>
+          {r.helpfulResources?.length ? (
+            <ul className="li-ai-list-plain li-ai-resource-list">
+              {r.helpfulResources.map((x, i) => (
+                <li key={`${i}-${x}`}>
+                  <ResourceLine text={x} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="li-ai-muted">{t('ai.result.emptySection')}</p>
+          )}
+        </div>
         <div className="li-ai-result-card">
           <h4 className="li-ai-result-title">{t('ai.result.notes')}</h4>
           {r.notes?.length ? (
@@ -508,13 +610,27 @@ export function AiPage() {
             <p className="li-ai-hint" style={{ margin: 0 }}>
               {t('ai.cv.hint')}
             </p>
-            <span className="li-ai-meta">{t('ai.cv.chars').replace('{n}', String(cvLen))}</span>
+            <span className="li-ai-meta">{cvMetaChars}</span>
           </div>
-          <div className="li-ai-upload-row">
-            <input ref={fileRef} type="file" className="li-ai-file" accept=".txt,.md,text/plain" onChange={onCvFileChange} />
-            <button type="button" className="li-ai-file-label" onClick={() => fileRef.current?.click()}>
-              {t('ai.cv.upload')}
-            </button>
+          <div className="li-ai-upload-row li-ai-upload-row--split">
+            <div className="li-ai-upload-group">
+              <input ref={fileRef} type="file" className="li-ai-file" accept=".txt,.md,text/plain" onChange={onCvFileChange} />
+              <button type="button" className="li-ai-file-label" onClick={() => fileRef.current?.click()}>
+                {t('ai.cv.upload')}
+              </button>
+            </div>
+            <div className="li-ai-upload-group">
+              <input
+                ref={pdfRef}
+                type="file"
+                className="li-ai-file"
+                accept=".pdf,.doc,.docx,application/pdf"
+                onChange={(e) => void onCvPdfChange(e)}
+              />
+              <button type="button" className="li-ai-file-label li-ai-file-label--primary" onClick={() => pdfRef.current?.click()}>
+                {t('ai.cv.uploadPdf')}
+              </button>
+            </div>
             {cvFileName ? <span className="li-ai-file-name">{cvFileName}</span> : null}
           </div>
           <textarea
@@ -522,6 +638,7 @@ export function AiPage() {
             value={cvText}
             onChange={(e) => {
               setCvText(e.target.value)
+              setCvServerUrl(null)
               setCvResult(null)
             }}
             placeholder={t('ai.cv.placeholder')}
@@ -606,7 +723,7 @@ export function AiPage() {
           <p className="li-ai-hint li-ai-hint--label" id={improveJobLbl}>
             {t('ai.improve.job')}
           </p>
-          <NiceSelect aria-labelledby={improveJobLbl} value={improveJobId} onChange={setImproveJobId} options={jobOptions} />
+          <NiceSelect aria-labelledby={improveJobLbl} value={improveJobId} onChange={setImproveJobId} options={improveJobOptions} />
           <label className="li-ai-check" style={{ marginTop: 14 }}>
             <input type="checkbox" checked={applyImprove} onChange={(e) => setApplyImprove(e.target.checked)} />
             <span>{t('ai.improve.apply')}</span>
@@ -641,7 +758,21 @@ export function AiPage() {
         )
       }
       if (cvResult) {
-        return <div className="li-ai-reply-body li-ai-reply-body--scroll">{renderCvResults(cvResult)}</div>
+        return (
+          <div className="li-ai-reply-body li-ai-reply-body--scroll li-ai-reply-body--cv-out">
+            {renderCvResults(cvResult)}
+          </div>
+        )
+      }
+      if (error) {
+        return (
+          <div className="li-ai-reply-body li-ai-reply-body--scroll li-ai-reply-body--cv-out li-ai-reply-body--cv-err">
+            <div className="li-ai-cv-panel-err">
+              <p className="li-ai-cv-panel-err-title">{t('ai.cv.panelErrorTitle')}</p>
+              <p className="li-ai-cv-panel-err-msg">{error}</p>
+            </div>
+          </div>
+        )
       }
       return (
         <div className="li-ai-reply-body is-empty">

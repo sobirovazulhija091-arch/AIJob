@@ -218,3 +218,14 @@ html[data-theme='dark'] .li-job-card:hover {
   font-weight: 600;
   font-size: 14px;
 }
+
+a.li-jobs-profile-link {
+  font-weight: 800;
+  color: var(--li-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.li-jobs-profile-link:hover {
+  opacity: 0.88;
+}

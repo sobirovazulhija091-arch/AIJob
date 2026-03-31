@@ -2,6 +2,8 @@ import { useEffect, useId, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { NiceSelect } from '../components/NiceSelect'
 import { getJobs, type Job } from '../lib/api'
+import { hasRole } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
 import './jobs.css'
 
 function IconPin() {
@@ -57,6 +59,7 @@ function formatSalaryRange(min: number, max: number): string {
 }
 
 export function JobsPage() {
+  const { t } = useI18n()
   const [searchParams] = useSearchParams()
   const jobTypeLabelId = useId()
   const jobLevelLabelId = useId()
@@ -101,6 +104,9 @@ export function JobsPage() {
     [levels],
   )
 
+  /** Backend allows applications only for Candidate; Organization users browse here without Apply. */
+  const canApply = !hasRole('Organization') || hasRole('Candidate')
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return items.filter((j) => {
@@ -133,6 +139,14 @@ export function JobsPage() {
       <aside className="li-panel">
         <h4 className="li-side-title">Filters</h4>
         <p className="li-side-text">Narrow listings by keyword, location, job type, and seniority.</p>
+        {hasRole('Candidate') ? (
+          <p className="li-side-text" style={{ marginTop: 12 }}>
+            {t('jobs.candidateHint')}{' '}
+            <Link to="/profile" className="li-jobs-profile-link">
+              {t('nav.profile')}
+            </Link>
+          </p>
+        ) : null}
         <div className="li-jobs-filters" style={{ marginTop: 14 }}>
           <label className="li-stack">
             <span className="li-label">Search</span>
@@ -196,10 +210,8 @@ export function JobsPage() {
 
         {!loading && !filtered.length ? (
           <div className="li-jobs-empty">
-            <strong>{items.length ? 'No matches' : 'No jobs yet'}</strong>
-            {items.length
-              ? 'Try clearing filters or searching with different keywords.'
-              : 'Check back later—or ask your admin to publish roles.'}
+            <strong>{items.length ? t('jobs.empty.noMatchesTitle') : t('jobs.empty.noJobsTitle')}</strong>
+            {items.length ? t('jobs.empty.noMatchesHint') : t('jobs.empty.noJobsHint')}
           </div>
         ) : null}
 
@@ -245,9 +257,15 @@ export function JobsPage() {
                     )}
                   </div>
                   <div className="li-job-actions">
-                    <Link className="li-btn primary" to={`/applications?jobId=${j.id}`}>
-                      Apply
-                    </Link>
+                    {canApply ? (
+                      <Link className="li-btn primary" to={`/applications?jobId=${j.id}`}>
+                        {t('jobs.apply')}
+                      </Link>
+                    ) : (
+                      <Link className="li-btn primary" to="/recruiting">
+                        {t('jobs.employerRecruiting')}
+                      </Link>
+                    )}
                     {showToggle ? (
                       <button
                         type="button"
@@ -267,10 +285,7 @@ export function JobsPage() {
 
       <aside className="li-panel">
         <h4 className="li-side-title">Tips</h4>
-        <p className="li-side-text">
-          Apply quickly from each card. Align your profile and expected salary with the role before you submit—employers
-          see your CareerHub profile.
-        </p>
+        <p className="li-side-text">{canApply ? t('jobs.tips.candidate') : t('jobs.tips.employer')}</p>
       </aside>
     </div>
   )

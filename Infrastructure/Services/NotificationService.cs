@@ -1,12 +1,15 @@
 using System.Net;
+using System.Security.Claims;
 using Domain.DTOs;
 using Infrastructure.Data;
 using Infrastructure.Responses;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
-public class NotificationService(ApplicationDbContext dbContext) : INotificationService
+public class NotificationService(ApplicationDbContext dbContext, IHttpContextAccessor httpContextAccessor) : INotificationService
 {
     private readonly ApplicationDbContext context = dbContext;
+    private readonly IHttpContextAccessor _http = httpContextAccessor;
 
     public async Task<Response<string>> CreateAsync(CreateNotificationDto dto)
     {
@@ -16,6 +19,7 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
             Type = dto.Type,
             Title = dto.Title,
             Message = dto.Message,
+            RelatedId = dto.RelatedId,
             IsRead = false,
             CreatedAt = DateTime.UtcNow
         };
@@ -79,8 +83,18 @@ public class NotificationService(ApplicationDbContext dbContext) : INotification
         if (notification == null)
             return new Response<string>(HttpStatusCode.NotFound, "Notification not found");
 
+        var uid = CurrentUserId();
+        if (!uid.HasValue || notification.UserId != uid.Value)
+            return new Response<string>(HttpStatusCode.Forbidden, "Not your notification");
+
         notification.IsRead = true;
         await context.SaveChangesAsync();
         return new Response<string>(HttpStatusCode.OK, "Marked as read");
+    }
+
+    private int? CurrentUserId()
+    {
+        var id = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(id, out var v) ? v : null;
     }
 }

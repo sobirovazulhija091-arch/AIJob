@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getNotifications, markNotificationRead, type Notification } from '../lib/api'
+import { Link } from 'react-router-dom'
+import {
+  CONNECTION_RESPOND_STATUS,
+  NOTIFICATION_TYPE,
+  getNotifications,
+  markNotificationRead,
+  respondConnection,
+  respondOrganizationMemberInvite,
+  type Notification,
+} from '../lib/api'
 import { getUserId } from '../lib/auth'
+import { useI18n } from '../lib/i18n'
+import { notifyNavAlertsChanged } from '../lib/navAlerts'
 import './notifications.css'
 
 function BellIcon() {
@@ -8,6 +19,20 @@ function BellIcon() {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function UserPlusIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M13 7a4 4 0 11-8 0 4 4 0 018 0zM20 8v6m3-3h-6"
         stroke="currentColor"
         strokeWidth="1.75"
         strokeLinecap="round"
@@ -44,11 +69,26 @@ function TipsIcon() {
   )
 }
 
+function isConnectionRequest(n: Notification): boolean {
+  if (n.type === NOTIFICATION_TYPE.connectionRequest) return true
+  return n.title.trim().toLowerCase() === 'connection request'
+}
+
+function isOrgMemberInvite(n: Notification): boolean {
+  return n.type === NOTIFICATION_TYPE.organizationMemberInvite
+}
+
+function isActionableInvite(n: Notification): boolean {
+  return isConnectionRequest(n) || isOrgMemberInvite(n)
+}
+
 export function NotificationsPage() {
+  const { t } = useI18n()
   const userId = getUserId()
   const [items, setItems] = useState<Notification[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<number | null>(null)
 
   const unreadCount = useMemo(() => items.filter((n) => !n.isRead).length, [items])
 
@@ -62,6 +102,7 @@ export function NotificationsPage() {
       setError(e instanceof Error ? e.message : 'Failed to load notifications.')
     } finally {
       setLoading(false)
+      notifyNavAlertsChanged()
     }
   }
 
@@ -72,11 +113,38 @@ export function NotificationsPage() {
 
   async function read(id: number) {
     setError('')
+    const snapshot = items
+    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, isRead: true } : x)))
+    notifyNavAlertsChanged()
     try {
       await markNotificationRead(id)
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to mark as read.')
+    } catch {
+      setItems(snapshot)
+      notifyNavAlertsChanged()
+      setError(t('notifications.markReadErr'))
+    }
+  }
+
+  async function respondToInvite(n: Notification, status: number) {
+    const rid = n.relatedId
+    if (rid == null || rid <= 0) return
+    setError('')
+    setBusyId(n.id)
+    try {
+      if (isConnectionRequest(n)) await respondConnection(rid, status)
+      else if (isOrgMemberInvite(n)) await respondOrganizationMemberInvite(rid, status)
+      else return
+      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)))
+      try {
+        await markNotificationRead(n.id)
+      } catch {
+        /* row already visually read */
+      }
+      notifyNavAlertsChanged()
+    } catch {
+      setError(t('notifications.connectionActionErr'))
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -88,8 +156,8 @@ export function NotificationsPage() {
         </span>
         <h4 className="li-side-title">Manage</h4>
         <p className="li-side-text">
-          Mark items as read when you&apos;ve acted on them. Unread highlights help you see what matters first without
-          missing follow-ups.
+          Mark items as read when you&apos;ve seen them. <strong>Mark as read</strong> only clears the highlight — use{' '}
+          <strong>Accept</strong> or <strong>Decline</strong> to answer a connection or organization invitation.
         </p>
       </aside>
 
@@ -109,7 +177,7 @@ export function NotificationsPage() {
             </div>
           ) : null}
 
-          {error ? <p style={{ color: 'crimson', margin: '14px 0 0', fontSize: 14 }}>{error}</p> : null}
+          {error ? <p className="li-notif-inline-err">{error}</p> : null}
         </div>
 
         {loading ? <div className="li-notif-loading">Loading notifications…</div> : null}
@@ -124,29 +192,68 @@ export function NotificationsPage() {
 
         {!loading && items.length > 0 ? (
           <div className="li-notif-list">
-            {items.map((n) => (
-              <article key={n.id} className={`li-notif-card ${n.isRead ? '' : 'li-notif-card--unread'}`}>
-                <div className="li-notif-icon" aria-hidden>
-                  <BellIcon />
-                </div>
-                <div className="li-notif-body">
-                  <h3 className="li-notif-title">{n.title}</h3>
-                  <p className="li-notif-msg">{n.message}</p>
-                </div>
-                <div className="li-notif-aside">
-                  <span className={`li-notif-pill ${n.isRead ? 'li-notif-pill--read' : 'li-notif-pill--new'}`}>
-                    {n.isRead ? 'Read' : 'New'}
-                  </span>
-                  {!n.isRead ? (
-                    <div className="li-notif-actions">
-                      <button className="li-btn" type="button" onClick={() => read(n.id)}>
-                        Mark read
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              </article>
-            ))}
+            {items.map((n) => {
+              const inviteUnread = !n.isRead && isActionableInvite(n)
+              const hasLink = typeof n.relatedId === 'number' && n.relatedId > 0
+              const showConnectStyle = isConnectionRequest(n) || isOrgMemberInvite(n)
+              return (
+                <article key={n.id} className={`li-notif-card ${n.isRead ? '' : 'li-notif-card--unread'}`}>
+                  <div
+                    className={`li-notif-icon ${showConnectStyle ? 'li-notif-icon--connect' : ''}`}
+                    aria-hidden
+                  >
+                    {showConnectStyle ? <UserPlusIcon /> : <BellIcon />}
+                  </div>
+                  <div className="li-notif-body">
+                    <h3 className="li-notif-title">{n.title}</h3>
+                    <p className="li-notif-msg">{n.message}</p>
+                    {inviteUnread && isConnectionRequest(n) && !hasLink ? (
+                      <p className="li-notif-msg li-notif-msg--hint">
+                        <Link to="/connections">{t('notifications.reviewConnections')}</Link>
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="li-notif-aside">
+                    <span className={`li-notif-pill ${n.isRead ? 'li-notif-pill--read' : 'li-notif-pill--new'}`}>
+                      {n.isRead ? 'Read' : 'New'}
+                    </span>
+                    {!n.isRead ? (
+                      <div className="li-notif-actions">
+                        {inviteUnread && hasLink ? (
+                          <div className="li-notif-actions-connect">
+                            <button
+                              className="li-btn primary li-notif-btn-compact"
+                              type="button"
+                              disabled={busyId === n.id}
+                              onClick={() => void respondToInvite(n, CONNECTION_RESPOND_STATUS.accepted)}
+                            >
+                              {t('notifications.acceptConnection')}
+                            </button>
+                            <button
+                              className="li-btn li-notif-btn-compact"
+                              type="button"
+                              disabled={busyId === n.id}
+                              onClick={() => void respondToInvite(n, CONNECTION_RESPOND_STATUS.declined)}
+                            >
+                              {t('notifications.declineConnection')}
+                            </button>
+                          </div>
+                        ) : null}
+                        <button
+                          className="li-btn li-notif-btn-compact"
+                          type="button"
+                          disabled={busyId === n.id}
+                          title={inviteUnread && hasLink ? t('notifications.markReadHint') : undefined}
+                          onClick={() => void read(n.id)}
+                        >
+                          {t('notifications.markRead')}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              )
+            })}
           </div>
         ) : null}
       </section>

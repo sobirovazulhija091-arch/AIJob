@@ -28,13 +28,6 @@ public class UserProfileController : ControllerBase
         return await _userProfileService.GetByIdAsync(id);
     }
 
-    [HttpGet]
-    [Authorize(Roles = "Admin")]
-    public async Task<Response<List<UserProfile>>> GetAllAsync()
-    {
-        return await _userProfileService.GetAllAsync();
-    }
-
     [HttpPut("{id}")]
     [Authorize]
     public async Task<Response<string>> UpdateAsync(int id, UpdateUserProfileDto dto)

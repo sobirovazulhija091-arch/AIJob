@@ -13,10 +13,10 @@ import { MessagesPage } from './pages/MessagesPage'
 import { NotificationsPage } from './pages/NotificationsPage'
 import { AiPage } from './pages/AiPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { AdminPage } from './pages/AdminPage'
 import { DirectoryPage } from './pages/DirectoryPage'
 import { OrganizationProfilePage } from './pages/OrganizationProfilePage'
 import { RecruitingPage } from './pages/RecruitingPage'
+import { CompanyPage } from './pages/CompanyPage'
 import type { ReactNode } from 'react'
 
 function RoleGate({ allow, children }: { allow: string[]; children: ReactNode }) {
@@ -68,7 +68,7 @@ export default function App() {
           path="/applications"
           element={
             authed ? (
-              <RoleGate allow={['Candidate', 'Admin']}>
+              <RoleGate allow={['Candidate']}>
                 <ApplicationsPage />
               </RoleGate>
             ) : (
@@ -80,8 +80,20 @@ export default function App() {
           path="/recruiting"
           element={
             authed ? (
-              <RoleGate allow={['Organization', 'Admin']}>
+              <RoleGate allow={['Organization']}>
                 <RecruitingPage />
+              </RoleGate>
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/company"
+          element={
+            authed ? (
+              <RoleGate allow={['Organization']}>
+                <CompanyPage />
               </RoleGate>
             ) : (
               <Navigate to="/auth" replace />
@@ -93,18 +105,6 @@ export default function App() {
         <Route path="/notifications" element={authed ? <NotificationsPage /> : <Navigate to="/auth" replace />} />
         <Route path="/ai" element={authed ? <AiPage /> : <Navigate to="/auth" replace />} />
         <Route path="/settings" element={authed ? <SettingsPage /> : <Navigate to="/auth" replace />} />
-        <Route
-          path="/admin"
-          element={
-            authed ? (
-              <RoleGate allow={['Admin']}>
-                <AdminPage />
-              </RoleGate>
-            ) : (
-              <Navigate to="/auth" replace />
-            )
-          }
-        />
       </Route>
       <Route path="*" element={<Navigate to={authed ? '/' : '/auth'} replace />} />
     </Routes>

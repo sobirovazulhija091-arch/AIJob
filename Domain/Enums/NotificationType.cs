@@ -5,6 +5,7 @@ public enum NotificationType
     MessageReceived = 3,
     ConnectionRequest = 4,
     ConnectionAccepted = 5,
-    PostCommented = 6
+    PostCommented = 6,
+    OrganizationMemberInvite = 7,
 }
 

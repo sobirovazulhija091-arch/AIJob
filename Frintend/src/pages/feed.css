@@ -40,7 +40,7 @@
   font-weight: 900;
   color: #fff;
   background: linear-gradient(135deg, #0a66c2, #3b82f6);
-  box-shadow: 0 6px 18px rgba(10, 102, 194, 0.32);
+  box-shadow: 0 1px 3px rgba(10, 102, 194, 0.22);
   letter-spacing: -0.02em;
 }
 
@@ -95,7 +95,13 @@
   box-shadow: var(--li-shadow);
   border: 1px solid var(--li-line);
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, outline-color 0.35s ease;
+  scroll-margin-top: 24px;
+}
+
+.li-feed-post--flash {
+  outline: 2px solid color-mix(in srgb, var(--li-blue) 55%, transparent);
+  outline-offset: 3px;
 }
 
 .li-feed-post:hover {
@@ -162,6 +168,30 @@ a.li-feed-post-name--link:hover {
   opacity: 0.55;
 }
 
+.li-feed-repost-attrib {
+  padding: 8px 16px 0;
+  margin: 0;
+  border-bottom: 0;
+}
+
+.li-feed-repost-link {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--li-blue);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.li-feed-repost-link:hover {
+  text-decoration: underline;
+}
+
+.li-feed-repost-link--muted {
+  color: var(--li-muted);
+  font-weight: 700;
+  cursor: default;
+}
+
 .li-feed-post-body {
   padding: 14px 16px 16px;
   font-size: 14px;
@@ -174,8 +204,9 @@ a.li-feed-post-name--link:hover {
 .li-feed-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 12px 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 12px;
   border-top: 1px solid var(--li-line);
   background: var(--li-field);
 }
@@ -190,12 +221,74 @@ a.li-feed-post-name--link:hover {
   border-radius: 10px;
   cursor: pointer;
   opacity: 0.85;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .li-feed-act--muted {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* LinkedIn-style pills for Like / Repost */
+.li-feed-act--pill {
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: var(--li-blue);
+  background: color-mix(in srgb, var(--li-blue) 11%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--li-blue) 22%, var(--li-line));
+  opacity: 1;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.72) inset;
+}
+
+.li-feed-act--pill:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--li-blue) 16%, #ffffff);
+  border-color: color-mix(in srgb, var(--li-blue) 32%, var(--li-line));
+}
+
+.li-feed-act--pill.li-feed-act--liked {
+  color: #0b4f96;
+  background: color-mix(in srgb, var(--li-blue) 20%, #f0f6ff);
+  border-color: color-mix(in srgb, var(--li-blue) 38%, var(--li-line));
+}
+
+.li-feed-act--pill.li-feed-act--liked:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--li-blue) 26%, #e8f1fc);
+}
+
+.li-feed-act--comments {
+  color: var(--li-blue);
+  opacity: 1;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.li-feed-act--comments:hover {
+  background: rgba(10, 102, 194, 0.08);
+}
+
+html[data-theme='dark'] .li-feed-act--pill {
+  background: rgba(107, 163, 232, 0.16);
+  border-color: rgba(107, 163, 232, 0.38);
+  color: #93c5fd;
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .li-feed-act--pill:hover:not(:disabled) {
+  background: rgba(107, 163, 232, 0.24);
+}
+
+html[data-theme='dark'] .li-feed-act--pill.li-feed-act--liked {
+  color: #bfdbfe;
+  background: rgba(107, 163, 232, 0.28);
+  border-color: rgba(147, 197, 253, 0.45);
+}
+
+html[data-theme='dark'] .li-feed-act--comments:hover {
+  background: rgba(107, 163, 232, 0.12);
 }
 
 .li-feed-act--primary {
@@ -207,8 +300,27 @@ a.li-feed-post-name--link:hover {
   background: rgba(10, 102, 194, 0.08);
 }
 
+.li-feed-act--delete {
+  margin-left: auto;
+  color: #b91c1c;
+  opacity: 1;
+}
+
+.li-feed-act--delete:hover {
+  background: rgba(185, 28, 28, 0.08);
+}
+
+html[data-theme='dark'] .li-feed-act--delete {
+  color: #fca5a5;
+}
+
+html[data-theme='dark'] .li-feed-act--delete:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
 .li-feed-act:disabled {
   cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .li-feed-comments {

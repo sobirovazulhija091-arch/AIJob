@@ -15,7 +15,7 @@ public class NotificationController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Candidate,Organization")]
     public async Task<Response<string>> AddAsync(CreateNotificationDto dto)
     {
         return await _notificationService.CreateAsync(dto);
@@ -26,13 +26,6 @@ public class NotificationController : ControllerBase
     public async Task<Response<Notification>> GetByIdAsync(int id)
     {
         return await _notificationService.GetByIdAsync(id);
-    }
-
-    [HttpGet]
-    [Authorize(Roles = "Admin")]
-    public async Task<Response<List<Notification>>> GetAllAsync()
-    {
-        return await _notificationService.GetAllAsync();
     }
 
     [HttpGet("paged")]

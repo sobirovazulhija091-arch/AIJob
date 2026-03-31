@@ -1,3 +1,5 @@
+using System.Net;
+using System.Security.Claims;
 using Domain.DTOs;
 using Domain.Filters;
 using Infrastructure.Responses;
@@ -16,10 +18,20 @@ public class OrganizationController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
-    public async Task<Response<string>> AddAsync(CreateOrganizationDto dto)
+    [Authorize(Roles = "Organization")]
+    public async Task<Response<Organization>> AddAsync(CreateOrganizationDto dto)
     {
         return await _organizationService.CreateAsync(dto);
+    }
+
+    [HttpGet("mine")]
+    [Authorize(Roles = "Organization")]
+    public async Task<Response<List<Organization>>> GetMineAsync()
+    {
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<List<Organization>>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _organizationService.GetForUserAsync(userId);
     }
 
     [HttpGet("{id}")]
@@ -44,17 +56,23 @@ public class OrganizationController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateOrganizationDto dto)
     {
-        return await _organizationService.UpdateAsync(id, dto);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _organizationService.UpdateAsync(id, dto, userId);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
-        return await _organizationService.DeleteAsync(id);
+        var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idClaim, out var userId))
+            return new Response<string>(HttpStatusCode.Unauthorized, "Invalid user");
+        return await _organizationService.DeleteAsync(id, userId);
     }
 
     [HttpGet("search")]

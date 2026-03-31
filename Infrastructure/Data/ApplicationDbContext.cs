@@ -23,7 +23,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
     public DbSet<ProfileLanguage> ProfileLanguages { get; set; }
     public DbSet<Language> Languages { get; set; } 
     public DbSet<Organization> Organizations { get; set; } 
-    public DbSet<OrganizationMember> OrganizationMembers { get; set; } 
+    public DbSet<OrganizationMember> OrganizationMembers { get; set; }
+    public DbSet<OrganizationMemberInvitation> OrganizationMemberInvitations { get; set; }
     public DbSet<Job> Jobs { get; set; } 
     public DbSet<JobCategory> JobCategories { get; set; } 
     public DbSet<JobSkill> JobSkills { get; set; } 
@@ -193,6 +194,27 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .WithMany()
             .HasForeignKey(om => om.UserId);
 
+        modelBuilder.Entity<OrganizationMemberInvitation>()
+            .HasOne<Organization>()
+            .WithMany()
+            .HasForeignKey(i => i.OrganizationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrganizationMemberInvitation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(i => i.InvitedUserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrganizationMemberInvitation>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(i => i.InvitedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<OrganizationMemberInvitation>()
+            .HasIndex(i => new { i.OrganizationId, i.InvitedUserId, i.Status });
+
      
         modelBuilder.Entity<Notification>()
             .HasOne<User>()
@@ -224,6 +246,10 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, i
             .HasOne<User>()
             .WithMany()
             .HasForeignKey(c => c.User2Id);
+
+        modelBuilder.Entity<Conversation>()
+            .HasIndex(c => new { c.User1Id, c.User2Id })
+            .IsUnique();
 
         modelBuilder.Entity<Message>()
             .HasOne<Conversation>()

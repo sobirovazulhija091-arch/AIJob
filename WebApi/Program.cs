@@ -52,6 +52,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.Configure<EmailSetting>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -215,7 +217,7 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
 
-    var roles = new[] { "Admin", "Organization", "Candidate" };
+    var roles = new[] { "Organization", "Candidate" };
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))

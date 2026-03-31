@@ -5,4 +5,6 @@ public class Organization
     public string? Description { get; set; }
     public OrganizationType Type { get; set; }
     public string? Location { get; set; }
+    /// <summary>Optional public logo; HTTPS URL recommended.</summary>
+    public string? LogoUrl { get; set; }
 }

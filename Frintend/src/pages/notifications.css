@@ -102,6 +102,15 @@ html[data-theme='dark'] .li-notif-card--unread {
   border-color: rgba(10, 102, 194, 0.2);
 }
 
+.li-notif-icon--connect {
+  color: var(--li-blue);
+  background: linear-gradient(145deg, rgba(10, 102, 194, 0.12), var(--li-field));
+}
+
+.li-notif-card--unread .li-notif-icon--connect {
+  background: linear-gradient(145deg, rgba(10, 102, 194, 0.18), var(--li-field));
+}
+
 .li-notif-body {
   min-width: 0;
 }
@@ -120,6 +129,29 @@ html[data-theme='dark'] .li-notif-card--unread {
   font-size: 14px;
   line-height: 1.5;
   color: var(--li-muted);
+}
+
+.li-notif-msg--hint {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.li-notif-msg--hint a {
+  font-weight: 800;
+  color: var(--li-blue, #0a66c2);
+  text-decoration: none;
+}
+
+.li-notif-msg--hint a:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.li-notif-inline-err {
+  color: #b91c1c;
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .li-notif-aside {
@@ -158,9 +190,33 @@ html[data-theme='dark'] .li-notif-pill--new {
   border-color: rgba(147, 197, 253, 0.35);
 }
 
+.li-notif-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: 220px;
+}
+
+.li-notif-actions-connect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.li-notif-btn-compact {
+  font-size: 12px;
+  min-height: 36px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
 .li-notif-actions .li-btn {
   font-size: 12px;
-  height: 34px;
+  height: auto;
+  min-height: 36px;
   padding: 0 12px;
 }
 

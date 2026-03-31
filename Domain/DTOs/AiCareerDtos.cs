@@ -22,6 +22,12 @@ public class AiCvAnalysisResultDto
     public List<string> Education { get; set; } = [];
     public List<string> RecommendedRoles { get; set; } = [];
     public List<string> Notes { get; set; } = [];
+    /// <summary>Concrete gaps: missing dates, no jobs listed, no skills section, etc.</summary>
+    public List<string> MissingOrWeakSections { get; set; } = [];
+    /// <summary>Actionable steps to improve the CV.</summary>
+    public List<string> HowToImprove { get; set; } = [];
+    /// <summary>Reputable resources, e.g. "Title — https://..."</summary>
+    public List<string> HelpfulResources { get; set; } = [];
     public string SourceTextPreview { get; set; } = "";
 }
 
@@ -105,6 +111,15 @@ public class AiCvAnalysisJsonDto
 
     [JsonPropertyName("notes")]
     public List<string>? Notes { get; set; }
+
+    [JsonPropertyName("missingOrWeakSections")]
+    public List<string>? MissingOrWeakSections { get; set; }
+
+    [JsonPropertyName("howToImprove")]
+    public List<string>? HowToImprove { get; set; }
+
+    [JsonPropertyName("helpfulResources")]
+    public List<string>? HelpfulResources { get; set; }
 }
 
 public class AiSkillGapJsonDto

@@ -35,4 +35,11 @@ public class MessageController : ControllerBase
     {
         return await _messageService.GetByConversationIdAsync(conversationId, GetUserId());
     }
+
+    /// <summary>Removes one message for both participants (if you are in the chat).</summary>
+    [HttpDelete("{id:int}")]
+    public async Task<Response<string>> DeleteAsync(int id)
+    {
+        return await _messageService.DeleteAsync(id, GetUserId());
+    }
 }

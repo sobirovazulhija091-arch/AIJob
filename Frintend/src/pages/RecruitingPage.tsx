@@ -3,11 +3,17 @@ import { Link } from 'react-router-dom'
 import { NiceSelect } from '../components/NiceSelect'
 import {
   changeApplicationStatus,
+  createJob,
   getApplicationsByJob,
-  getJobs,
+  createJobCategory,
+  getJobCategories,
+  getMyJobs,
+  getMyOrganizations,
   getPublicProfilesByUsers,
   type Job,
   type JobApplication,
+  type JobCategoryRow,
+  type OrganizationRow,
 } from '../lib/api'
 import { initialsFromLabel } from '../lib/auth'
 import { useI18n } from '../lib/i18n'
@@ -55,7 +61,7 @@ function IconInbox() {
   )
 }
 
-function normalizeStatusKey(status: string): 'pending' | 'accepted' | 'rejected' | 'interview' | 'unknown' {
+function normalizeStatusKey(status: string | number): 'pending' | 'accepted' | 'rejected' | 'interview' | 'unknown' {
   const n = parseInt(String(status), 10)
   if (n === STATUS.pending) return 'pending'
   if (n === STATUS.accepted) return 'accepted'
@@ -75,16 +81,41 @@ function formatJobSalary(job: Job): string {
   return `${fmt.format(job.salaryMin)} – ${fmt.format(job.salaryMax)}`
 }
 
+const JOB_TYPES = ['FullTime', 'PartTime', 'Remote', 'Hybrid'] as const
+const EXP_LEVELS = ['Junior', 'Middle', 'Senior'] as const
+
 export function RecruitingPage() {
   const { t } = useI18n()
   const pickJobLabelId = useId()
+  const postOrgLbl = useId()
+  const postCatLbl = useId()
+  const postTypeLbl = useId()
+  const postLevelLbl = useId()
   const [jobs, setJobs] = useState<Job[]>([])
+  const [orgs, setOrgs] = useState<OrganizationRow[]>([])
+  const [categories, setCategories] = useState<JobCategoryRow[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [jobId, setJobId] = useState(0)
   const [apps, setApps] = useState<JobApplication[]>([])
   const [appsLoading, setAppsLoading] = useState(false)
   const [names, setNames] = useState<Record<number, string>>({})
   const [error, setError] = useState('')
+  const [postOrgId, setPostOrgId] = useState('')
+  const [postTitle, setPostTitle] = useState('')
+  const [postDesc, setPostDesc] = useState('')
+  const [postLocation, setPostLocation] = useState('')
+  const [postSalaryMin, setPostSalaryMin] = useState('')
+  const [postSalaryMax, setPostSalaryMax] = useState('')
+  const [postJobType, setPostJobType] = useState<string>(JOB_TYPES[0])
+  const [postExpLevel, setPostExpLevel] = useState<string>(EXP_LEVELS[1])
+  const [postExpYears, setPostExpYears] = useState('0')
+  const [postCategoryId, setPostCategoryId] = useState('')
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryBusy, setNewCategoryBusy] = useState(false)
+  const [newCategoryErr, setNewCategoryErr] = useState('')
+  const [postBusy, setPostBusy] = useState(false)
+  const [postMsg, setPostMsg] = useState('')
+  const [postErr, setPostErr] = useState('')
 
   const selectedJob = useMemo(() => jobs.find((j) => j.id === jobId), [jobs, jobId])
   const jobOptions = useMemo(
@@ -95,11 +126,39 @@ export function RecruitingPage() {
     [jobs, t],
   )
 
+  const orgOptions = useMemo(
+    () => [{ value: '', label: t('recruiting.postOrgPick') }, ...orgs.map((o) => ({ value: String(o.id), label: o.name }))],
+    [orgs, t],
+  )
+  const catOptions = useMemo(
+    () => [{ value: '', label: t('recruiting.postCatPick') }, ...categories.map((c) => ({ value: String(c.id), label: c.name }))],
+    [categories, t],
+  )
+  const typeOpts = useMemo(
+    () =>
+      JOB_TYPES.map((ty) => ({
+        value: ty,
+        label: t(`recruiting.jobType.${ty}`),
+      })),
+    [t],
+  )
+  const levelOpts = useMemo(
+    () =>
+      EXP_LEVELS.map((lv) => ({
+        value: lv,
+        label: t(`recruiting.expLevel.${lv}`),
+      })),
+    [t],
+  )
+
   useEffect(() => {
     void (async () => {
       setJobsLoading(true)
       try {
-        setJobs(await getJobs())
+        const [j, o, c] = await Promise.all([getMyJobs(), getMyOrganizations(), getJobCategories()])
+        setJobs(j)
+        setOrgs(o)
+        setCategories(c)
       } catch {
         // ignore
       } finally {
@@ -159,6 +218,78 @@ export function RecruitingPage() {
     }
   }
 
+  async function submitNewJob() {
+    setPostErr('')
+    setPostMsg('')
+    const oid = parseInt(postOrgId || '0', 10)
+    const cid = parseInt(postCategoryId || '0', 10)
+    const smin = parseFloat(postSalaryMin.replace(/,/g, '') || '0')
+    const smax = parseFloat(postSalaryMax.replace(/,/g, '') || '0')
+    const expReq = Math.max(0, parseInt(postExpYears.replace(/\D/g, '') || '0', 10))
+    if (!postTitle.trim()) {
+      setPostErr(t('recruiting.postErrTitle'))
+      return
+    }
+    if (!oid || !cid) {
+      setPostErr(t('recruiting.postErrOrgCat'))
+      return
+    }
+    if (!Number.isFinite(smin) || !Number.isFinite(smax) || smin <= 0 || smax <= 0 || smin > smax) {
+      setPostErr(t('recruiting.postErrSalary'))
+      return
+    }
+    setPostBusy(true)
+    try {
+      await createJob({
+        organizationId: oid,
+        title: postTitle.trim(),
+        description: postDesc.trim() || undefined,
+        location: postLocation.trim() || undefined,
+        salaryMin: smin,
+        salaryMax: smax,
+        jobType: postJobType,
+        experienceLevel: postExpLevel,
+        experienceRequired: expReq,
+        categoryId: cid,
+      })
+      const list = await getMyJobs()
+      setJobs(list)
+      setPostTitle('')
+      setPostDesc('')
+      setPostLocation('')
+      setPostSalaryMin('')
+      setPostSalaryMax('')
+      setPostExpYears('0')
+      setPostMsg(t('recruiting.postSuccess'))
+    } catch (e) {
+      setPostErr(e instanceof Error ? e.message : t('recruiting.postFail'))
+    } finally {
+      setPostBusy(false)
+    }
+  }
+
+  async function submitNewCategory() {
+    const n = newCategoryName.trim()
+    setNewCategoryErr('')
+    if (!n) {
+      setNewCategoryErr(t('recruiting.addCategoryErrEmpty'))
+      return
+    }
+    setNewCategoryBusy(true)
+    try {
+      await createJobCategory(n)
+      const list = await getJobCategories()
+      setCategories(list)
+      const created = list.find((c) => c.name.trim().toLowerCase() === n.toLowerCase())
+      if (created) setPostCategoryId(String(created.id))
+      setNewCategoryName('')
+    } catch (e) {
+      setNewCategoryErr(e instanceof Error ? e.message : t('recruiting.addCategoryErr'))
+    } finally {
+      setNewCategoryBusy(false)
+    }
+  }
+
   function statusBadgeLabel(key: ReturnType<typeof normalizeStatusKey>): string {
     switch (key) {
       case 'pending':
@@ -188,6 +319,153 @@ export function RecruitingPage() {
         <div className="li-recruit-hero">
           <h2 className="li-page-title">{t('recruiting.title')}</h2>
           <p className="li-page-sub">{t('recruiting.sub')}</p>
+
+          {!jobsLoading ? (
+            <div className="li-recruit-post">
+              <h3 className="li-recruit-post-title">{t('recruiting.postTitle')}</h3>
+              <p className="li-page-sub li-recruit-post-sub">{t('recruiting.postSub')}</p>
+              {categories.length === 0 ? (
+                <p className="li-recruit-post-warn">{t('recruiting.postNoCategories')}</p>
+              ) : null}
+              {postMsg ? <p className="li-recruit-post-ok">{postMsg}</p> : null}
+              {postErr ? <p className="li-recruit-post-err">{postErr}</p> : null}
+              <div className="li-recruit-post-grid">
+                <div className="li-stack">
+                  <span className="li-label" id={postOrgLbl}>
+                    {t('recruiting.postOrg')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={postOrgLbl}
+                    value={postOrgId}
+                    onChange={setPostOrgId}
+                    options={orgOptions}
+                  />
+                </div>
+                <div className="li-stack">
+                  <span className="li-label" id={postCatLbl}>
+                    {t('recruiting.postCategory')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={postCatLbl}
+                    value={postCategoryId}
+                    onChange={setPostCategoryId}
+                    options={catOptions}
+                    disabled={categories.length === 0}
+                  />
+                  <p className="li-recruit-category-hint">{t('recruiting.addCategoryHint')}</p>
+                  <div className="li-recruit-category-add">
+                    <input
+                      className="li-input li-recruit-category-add-input"
+                      value={newCategoryName}
+                      onChange={(e) => {
+                        setNewCategoryName(e.target.value)
+                        setNewCategoryErr('')
+                      }}
+                      placeholder={t('recruiting.addCategoryPlaceholder')}
+                      autoComplete="off"
+                      aria-label={t('recruiting.addCategoryPlaceholder')}
+                    />
+                    <button
+                      type="button"
+                      className="li-btn"
+                      disabled={newCategoryBusy}
+                      onClick={() => void submitNewCategory()}
+                    >
+                      {newCategoryBusy ? t('recruiting.addCategoryBusy') : t('recruiting.addCategorySubmit')}
+                    </button>
+                  </div>
+                  {newCategoryErr ? <p className="li-recruit-post-err li-recruit-category-add-err">{newCategoryErr}</p> : null}
+                </div>
+                <label className="li-stack li-recruit-post-span2">
+                  <span className="li-label">{t('recruiting.postJobTitle')}</span>
+                  <input
+                    className="li-input"
+                    value={postTitle}
+                    onChange={(e) => setPostTitle(e.target.value)}
+                    placeholder={t('recruiting.postJobTitlePh')}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="li-stack li-recruit-post-span2">
+                  <span className="li-label">{t('recruiting.postLocation')}</span>
+                  <input
+                    className="li-input"
+                    value={postLocation}
+                    onChange={(e) => setPostLocation(e.target.value)}
+                    placeholder={t('recruiting.postLocationPh')}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="li-stack">
+                  <span className="li-label">{t('recruiting.postSalaryMin')}</span>
+                  <input
+                    className="li-input"
+                    value={postSalaryMin}
+                    onChange={(e) => setPostSalaryMin(e.target.value)}
+                    placeholder="50000"
+                    inputMode="decimal"
+                  />
+                </label>
+                <label className="li-stack">
+                  <span className="li-label">{t('recruiting.postSalaryMax')}</span>
+                  <input
+                    className="li-input"
+                    value={postSalaryMax}
+                    onChange={(e) => setPostSalaryMax(e.target.value)}
+                    placeholder="90000"
+                    inputMode="decimal"
+                  />
+                </label>
+                <div className="li-stack">
+                  <span className="li-label" id={postTypeLbl}>
+                    {t('recruiting.postJobType')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={postTypeLbl}
+                    value={postJobType}
+                    onChange={setPostJobType}
+                    options={typeOpts}
+                  />
+                </div>
+                <div className="li-stack">
+                  <span className="li-label" id={postLevelLbl}>
+                    {t('recruiting.postSeniority')}
+                  </span>
+                  <NiceSelect
+                    aria-labelledby={postLevelLbl}
+                    value={postExpLevel}
+                    onChange={setPostExpLevel}
+                    options={levelOpts}
+                  />
+                </div>
+                <label className="li-stack">
+                  <span className="li-label">{t('recruiting.postMinYears')}</span>
+                  <input
+                    className="li-input"
+                    value={postExpYears}
+                    onChange={(e) => setPostExpYears(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                    inputMode="numeric"
+                    placeholder="0"
+                  />
+                </label>
+                <label className="li-stack li-recruit-post-span2">
+                  <span className="li-label">{t('recruiting.postDescription')}</span>
+                  <textarea
+                    className="li-textarea"
+                    rows={4}
+                    value={postDesc}
+                    onChange={(e) => setPostDesc(e.target.value)}
+                    placeholder={t('recruiting.postDescriptionPh')}
+                  />
+                </label>
+              </div>
+              <div className="li-recruit-post-actions">
+                <button className="li-btn primary" type="button" disabled={postBusy || categories.length === 0} onClick={() => void submitNewJob()}>
+                  {postBusy ? t('recruiting.postSaving') : t('recruiting.postSubmit')}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {jobsLoading ? (
             <p className="li-recruit-loading" style={{ margin: '12px 0 0', padding: 0 }}>
@@ -276,6 +554,7 @@ export function RecruitingPage() {
                     const name = names[a.userId] ?? `User ${a.userId}`
                     const initials = initialsFromLabel(name)
                     const sk = normalizeStatusKey(a.status)
+                    const activeStatusKey = sk === 'unknown' ? 'pending' : sk
                     const badgeClass =
                       sk === 'pending'
                         ? 'li-recruit-badge--pending'
@@ -305,16 +584,32 @@ export function RecruitingPage() {
                         <div className="li-recruit-actions">
                           <p className="li-recruit-act-label">{t('recruiting.statusActions')}</p>
                           <div className="li-recruit-row-actions">
-                            <button className="li-btn" type="button" onClick={() => setStatus(a.id, STATUS.pending)}>
+                            <button
+                              className={activeStatusKey === 'pending' ? 'li-btn primary' : 'li-btn'}
+                              type="button"
+                              onClick={() => setStatus(a.id, STATUS.pending)}
+                            >
                               {t('recruiting.pending')}
                             </button>
-                            <button className="li-btn primary" type="button" onClick={() => setStatus(a.id, STATUS.accepted)}>
+                            <button
+                              className={activeStatusKey === 'accepted' ? 'li-btn primary' : 'li-btn'}
+                              type="button"
+                              onClick={() => setStatus(a.id, STATUS.accepted)}
+                            >
                               {t('recruiting.accepted')}
                             </button>
-                            <button className="li-btn" type="button" onClick={() => setStatus(a.id, STATUS.rejected)}>
+                            <button
+                              className={activeStatusKey === 'rejected' ? 'li-btn primary' : 'li-btn'}
+                              type="button"
+                              onClick={() => setStatus(a.id, STATUS.rejected)}
+                            >
                               {t('recruiting.rejected')}
                             </button>
-                            <button className="li-btn" type="button" onClick={() => setStatus(a.id, STATUS.interview)}>
+                            <button
+                              className={activeStatusKey === 'interview' ? 'li-btn primary' : 'li-btn'}
+                              type="button"
+                              onClick={() => setStatus(a.id, STATUS.interview)}
+                            >
                               {t('recruiting.interview')}
                             </button>
                           </div>

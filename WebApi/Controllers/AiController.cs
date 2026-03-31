@@ -31,7 +31,6 @@ public class AiController : ControllerBase
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (int.TryParse(idClaim, out var userId))
             dto.UserId = userId;
-
         return await _aiCareerService.AnalyzeCvAsync(dto);
     }
 
@@ -43,7 +42,7 @@ public class AiController : ControllerBase
     }
 
     [HttpPost("improve-job")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<AiJobImproveResultDto>> ImproveJobAsync([FromBody] AiJobImproveRequestDto dto)
     {
         return await _aiCareerService.ImproveJobAsync(dto);

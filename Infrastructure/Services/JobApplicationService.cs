@@ -35,12 +35,6 @@ public class JobApplicationService(ApplicationDbContext dbContext) : IJobApplica
         return new Response<JobApplication>(HttpStatusCode.OK, "ok", get);
     }
 
-    public async Task<Response<List<JobApplication>>> GetAllAsync()
-    {
-        var list = await context.JobApplications.ToListAsync();
-        return new Response<List<JobApplication>>(HttpStatusCode.OK, "ok", list);
-    }
-
     public async Task<PagedResult<JobApplication>> GetPagedAsync(JobApplicationFilter filter, PagedQuery querypage)
     {
         var query = context.JobApplications.AsQueryable();
@@ -97,17 +91,31 @@ public class JobApplicationService(ApplicationDbContext dbContext) : IJobApplica
         return new Response<List<JobApplication>>(HttpStatusCode.OK, "ok", list);
     }
 
-    public async Task<Response<List<JobApplication>>> GetByJobIdAsync(int jobId)
+    public async Task<Response<List<JobApplication>>> GetByJobIdAsync(int jobId, int actingUserId)
     {
+        var job = await context.Jobs.FindAsync(jobId);
+        if (job == null)
+            return new Response<List<JobApplication>>(HttpStatusCode.NotFound, "Job not found");
+        var canManage = await context.OrganizationMembers.AnyAsync(m =>
+            m.UserId == actingUserId && m.OrganizationId == job.OrganizationId);
+        if (!canManage)
+            return new Response<List<JobApplication>>(HttpStatusCode.Forbidden, "You cannot view applications for this job");
         var list = await context.JobApplications.Where(ja => ja.JobId == jobId).ToListAsync();
         return new Response<List<JobApplication>>(HttpStatusCode.OK, "ok", list);
     }
 
-    public async Task<Response<string>> ChangeStatusAsync(int id, ApplicationStatus status)
+    public async Task<Response<string>> ChangeStatusAsync(int id, ApplicationStatus status, int actingUserId)
     {
         var app = await context.JobApplications.FindAsync(id);
         if (app == null)
             return new Response<string>(HttpStatusCode.NotFound, "JobApplication not found");
+        var job = await context.Jobs.FindAsync(app.JobId);
+        if (job == null)
+            return new Response<string>(HttpStatusCode.NotFound, "Job not found");
+        var canManage = await context.OrganizationMembers.AnyAsync(m =>
+            m.UserId == actingUserId && m.OrganizationId == job.OrganizationId);
+        if (!canManage)
+            return new Response<string>(HttpStatusCode.Forbidden, "You cannot update this application");
 
         app.Status = status;
         await context.SaveChangesAsync();

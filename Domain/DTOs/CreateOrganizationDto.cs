@@ -6,5 +6,6 @@ public class CreateOrganizationDto
     public string? Description { get; set; }
     public string? Type { get; set; }
     public string? Location { get; set; }
+    public string? LogoUrl { get; set; }
 }
 

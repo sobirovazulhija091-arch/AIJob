@@ -15,7 +15,7 @@ public class JobSkillController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> AddAsync(CreateJobSkillDto dto)
     {
         return await _jobSkillService.CreateAsync(dto);
@@ -36,14 +36,14 @@ public class JobSkillController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> UpdateAsync(int id, UpdateJobSkillDto dto)
     {
         return await _jobSkillService.UpdateAsync(id, dto);
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Organization,Admin")]
+    [Authorize(Roles = "Organization")]
     public async Task<Response<string>> DeleteAsync(int id)
     {
         return await _jobSkillService.DeleteAsync(id);

@@ -37,7 +37,12 @@ public class PostService(ApplicationDbContext dbContext, INotificationService no
             CreatedAt = c.CreatedAt,
         };
 
-    private static PostFeedItemDto ToFeedItem(Post p, int likeCount, bool likedByMe) =>
+    private static PostFeedItemDto ToFeedItem(
+        Post p,
+        int likeCount,
+        bool likedByMe,
+        int repostCount,
+        int? repostSourceUserId) =>
         new()
         {
             Id = p.Id,
@@ -46,8 +51,10 @@ public class PostService(ApplicationDbContext dbContext, INotificationService no
             ImageUrl = p.ImageUrl,
             CreatedAt = p.CreatedAt,
             RepostOfPostId = p.RepostOfPostId,
+            RepostSourceUserId = repostSourceUserId,
             LikeCount = likeCount,
             LikedByMe = likedByMe,
+            RepostCount = repostCount,
         };
 
     public async Task<Response<string>> CreateAsync(int userId, CreatePostDto dto)
@@ -113,7 +120,42 @@ public class PostService(ApplicationDbContext dbContext, INotificationService no
             .ToListAsync();
         var mySet = myLikePostIds.ToHashSet();
 
-        var dto = list.ConvertAll(p => ToFeedItem(p, countMap.GetValueOrDefault(p.Id), mySet.Contains(p.Id)));
+        var repostRows = await context.Posts
+            .AsNoTracking()
+            .Where(r => r.RepostOfPostId != null && postIds.Contains(r.RepostOfPostId.Value))
+            .GroupBy(r => r.RepostOfPostId!.Value)
+            .Select(g => new { PostId = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var repostMap = repostRows.ToDictionary(x => x.PostId, x => x.Count);
+
+        var repostingTargetIds = list
+            .Where(p => p.RepostOfPostId != null)
+            .Select(p => p.RepostOfPostId!.Value)
+            .Distinct()
+            .ToList();
+        Dictionary<int, int> repostAuthorByOriginalPostId = [];
+        if (repostingTargetIds.Count > 0)
+        {
+            var sources = await context.Posts
+                .AsNoTracking()
+                .Where(op => repostingTargetIds.Contains(op.Id))
+                .Select(op => new { op.Id, op.UserId })
+                .ToListAsync();
+            repostAuthorByOriginalPostId = sources.ToDictionary(x => x.Id, x => x.UserId);
+        }
+
+        var dto = list.ConvertAll(p =>
+        {
+            int? sourceUid = null;
+            if (p.RepostOfPostId is { } rid && repostAuthorByOriginalPostId.TryGetValue(rid, out var authorId))
+                sourceUid = authorId;
+            return ToFeedItem(
+                p,
+                countMap.GetValueOrDefault(p.Id),
+                mySet.Contains(p.Id),
+                repostMap.GetValueOrDefault(p.Id),
+                sourceUid);
+        });
         return new Response<List<PostFeedItemDto>>(HttpStatusCode.OK, "ok", dto);
     }
 
@@ -184,6 +226,13 @@ public class PostService(ApplicationDbContext dbContext, INotificationService no
         if (post.UserId != userId)
             return new Response<string>(HttpStatusCode.Forbidden, "Not your post");
 
+        var comments = await context.PostComments.Where(c => c.PostId == id).ToListAsync();
+        if (comments.Count > 0)
+            context.PostComments.RemoveRange(comments);
+        var likes = await context.PostLikes.Where(l => l.PostId == id).ToListAsync();
+        if (likes.Count > 0)
+            context.PostLikes.RemoveRange(likes);
+
         context.Posts.Remove(post);
         await context.SaveChangesAsync();
         return new Response<string>(HttpStatusCode.OK, "Post deleted");
@@ -243,6 +292,7 @@ public class PostService(ApplicationDbContext dbContext, INotificationService no
                     Type = NotificationType.PostCommented,
                     Title = "New comment on your post",
                     Message = snippet,
+                    RelatedId = postId,
                 });
             }
             catch
