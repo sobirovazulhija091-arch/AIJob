@@ -26,6 +26,8 @@ x86/
 # ===============================
 
 *.log
+.env
+.env.local
 
 # ===============================
 # OS files
@@ -48,6 +50,7 @@ Thumbs.db
 appsettings.Development.json
 appsettings.Production.json
 appsettings.json
+
 # ===============================
 # Secrets
 # ===============================
